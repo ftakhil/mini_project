@@ -383,9 +383,9 @@ const Dashboard = () => {
                                                     paddingAngle={5}
                                                     dataKey="value"
                                                 >
+                                                    <Cell fill="#10b981" />
+                                                    <Cell fill="#f43f5e" />
                                                     <Cell fill="#fb923c" />
-                                                    <Cell fill="#f97316" />
-                                                    <Cell fill="#71717a" />
                                                 </Pie>
                                                 <Tooltip
                                                     contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
@@ -406,8 +406,8 @@ const Dashboard = () => {
                                             <LineChart data={analyticsData.projectsHistory}>
                                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                                 <XAxis dataKey="month" stroke="#71717a" fontSize={12} />
-                                                <YAxis yAxisId="left" stroke="#fb923c" fontSize={12} orientation="left" />
-                                                <YAxis yAxisId="right" stroke="#f97316" fontSize={12} orientation="right" />
+                                                <YAxis yAxisId="left" stroke="#38bdf8" fontSize={12} orientation="left" />
+                                                <YAxis yAxisId="right" stroke="#fb923c" fontSize={12} orientation="right" />
                                                 <Tooltip
                                                     contentStyle={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
                                                 />
@@ -417,9 +417,9 @@ const Dashboard = () => {
                                                     type="monotone"
                                                     dataKey="completed"
                                                     name="Projects"
-                                                    stroke="#fb923c"
+                                                    stroke="#38bdf8"
                                                     strokeWidth={3}
-                                                    dot={{ fill: '#fb923c', r: 5 }}
+                                                    dot={{ fill: '#38bdf8', r: 5 }}
                                                     activeDot={{ r: 8 }}
                                                 />
                                                 <Line
@@ -427,9 +427,9 @@ const Dashboard = () => {
                                                     type="monotone"
                                                     dataKey="revenue"
                                                     name="Revenue ($)"
-                                                    stroke="#f97316"
+                                                    stroke="#fb923c"
                                                     strokeWidth={3}
-                                                    dot={{ fill: '#f97316', r: 5 }}
+                                                    dot={{ fill: '#fb923c', r: 5 }}
                                                     activeDot={{ r: 8 }}
                                                 />
                                             </LineChart>
