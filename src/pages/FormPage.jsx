@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Mail, User, MessageSquare, Briefcase, Send, CheckCircle2 } from 'lucide-react';
+import { Building2, Mail, User, MessageSquare, Briefcase, Send, CheckCircle2, DollarSign, Clock } from 'lucide-react';
 
 const FormPage = () => {
     const navigate = useNavigate();
@@ -10,7 +10,9 @@ const FormPage = () => {
         company: '',
         email: '',
         message: '',
-        service_required: 'website'
+        service_required: 'website',
+        estimated_budget: '',
+        expected_timeline: ''
     });
     const [status, setStatus] = useState('idle'); // idle | sending | success | error
 
@@ -140,6 +142,24 @@ const FormPage = () => {
                                 <option value="cloud">Cloud Infrastructure</option>
                                 <option value="security">Security Audit</option>
                             </select>
+                        </div>
+                    </div>
+
+                    {/* Budget & Timeline Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Estimated Budget</label>
+                            <div style={{ position: 'relative' }}>
+                                <DollarSign size={18} color="#71717a" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+                                <input required type="text" className="input-field" placeholder="$5,000 - $10,000" style={{ paddingLeft: '46px' }} value={formData.estimated_budget} onChange={(e) => setFormData({ ...formData, estimated_budget: e.target.value })} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Timeline</label>
+                            <div style={{ position: 'relative' }}>
+                                <Clock size={18} color="#71717a" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+                                <input required type="text" className="input-field" placeholder="e.g. 3 Months" style={{ paddingLeft: '46px' }} value={formData.expected_timeline} onChange={(e) => setFormData({ ...formData, expected_timeline: e.target.value })} />
+                            </div>
                         </div>
                     </div>
 
