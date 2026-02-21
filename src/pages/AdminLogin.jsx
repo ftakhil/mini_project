@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Lock, User, ArrowRight } from 'lucide-react';
+import { Shield, Lock, User, ArrowRight, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const AdminLogin = () => {
@@ -24,7 +24,7 @@ const AdminLogin = () => {
             .single();
 
         if (dbError || !data) {
-            setError('Invalid master admin credentials.');
+            setError('Invalid administrative credentials.');
             setLoading(false);
             return;
         }
@@ -36,77 +36,81 @@ const AdminLogin = () => {
     return (
         <div style={{
             minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'var(--bg-deep)', position: 'relative', overflow: 'hidden'
+            background: 'linear-gradient(135deg, #f5f5f7 0%, #fff9db 100%)', padding: '24px'
         }}>
-            {/* Glows */}
-            <div style={{ position: 'absolute', top: '10%', left: '25%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(251,146,60,0.1), transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
-            <div style={{ position: 'absolute', bottom: '10%', right: '25%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(249,115,22,0.05), transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
-
             <motion.div
-                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="glass"
-                style={{ width: '100%', maxWidth: '420px', padding: '40px', borderRadius: '24px', position: 'relative', zIndex: 10 }}
+                style={{
+                    width: '100%', maxWidth: '440px', padding: '48px', borderRadius: '40px',
+                    background: '#fff', boxShadow: '0 40px 100px rgba(0,0,0,0.05)'
+                }}
             >
-                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                    <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg,#fb923c,#f97316)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                        <Shield size={32} color="#fff" />
+                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    <div style={{
+                        width: '70px', height: '70px', background: '#1a1a1a',
+                        borderRadius: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 24px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+                    }}>
+                        <Shield size={32} color="#ffcc00" />
                     </div>
-                    <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', margin: 0 }}>Admin Portal</h2>
-                    <p style={{ color: '#a1a1aa', fontSize: '14px', marginTop: '6px' }}>Sign in to access the control panel</p>
+                    <h2 style={{ fontSize: '28px', fontWeight: 800 }}>Admin Login</h2>
+                    <p style={{ color: '#64748b', marginTop: '8px', fontSize: '15px' }}>Access the management console</p>
                 </div>
 
-                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
+                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     {error && (
-                        <div style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', padding: '12px', borderRadius: '8px', fontSize: '13px', textAlign: 'center', border: '1px solid rgba(248,113,113,0.3)' }}>
+                        <div style={{ background: '#fef2f2', color: '#dc2626', padding: '14px', borderRadius: '14px', fontSize: '13px', textAlign: 'center', fontWeight: 600 }}>
                             {error}
                         </div>
                     )}
 
-                    <div>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#a1a1aa', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Username</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 700, color: '#1A1A1A', marginLeft: '4px' }}>Username</label>
                         <div style={{ position: 'relative' }}>
-                            <User size={18} color="#71717a" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                            <User size={18} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                             <input
-                                autoFocus
-                                required
+                                autoFocus required
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
                                 className="input-field"
-                                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px 12px 42px', fontSize: '15px' }}
+                                style={{ paddingLeft: '48px' }}
                                 placeholder="Admin ID"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#a1a1aa', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 700, color: '#1A1A1A', marginLeft: '4px' }}>Password</label>
                         <div style={{ position: 'relative' }}>
-                            <Lock size={18} color="#71717a" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                            <Lock size={18} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                             <input
-                                required
-                                type="password"
+                                required type="password"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 className="input-field"
-                                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px 12px 42px', fontSize: '15px' }}
+                                style={{ paddingLeft: '48px' }}
                                 placeholder="••••••••"
                             />
                         </div>
                     </div>
 
-                    <motion.button
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    <button
                         disabled={loading}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                            width: '100%', padding: '14px', marginTop: '10px',
-                            background: 'linear-gradient(135deg,#fb923c,#f97316)', border: 'none', borderRadius: '12px',
-                            color: '#fff', fontSize: '15px', fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
-                        }}
+                        className="btn-dark"
+                        style={{ width: '100%', padding: '16px', marginTop: '8px', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                     >
-                        {loading ? 'Authenticating...' : 'Sign In'} <ArrowRight size={18} />
-                    </motion.button>
+                        {loading ? 'Authenticating...' : 'Sign In'} <ArrowRight size={20} />
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                        Return Home
+                    </button>
                 </form>
             </motion.div>
         </div>
