@@ -18,7 +18,7 @@ const MOCK_WORKER = {
 const MOCK_CLIENTS = [
     { id: 1, company: 'Global Systems', email: 'contact@globalsys.com', tier: 1, tierColor: '#fbbf24', since: 'Jan 2024' },
     { id: 2, company: 'Cloud Spire', email: 'admin@cloudspire.io', tier: 2, tierColor: '#ef4444', since: 'Mar 2024' },
-    { id: 3, company: 'Alpha Tech', email: 'info@alphatech.com', tier: 3, tierColor: '#fb923c', since: 'Nov 2023' },
+    { id: 3, company: 'Alpha Tech', email: 'info@alphatech.com', tier: 3, tierColor: '#a855f7', since: 'Nov 2023' },
 ];
 
 const PHASES = [

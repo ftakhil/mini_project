@@ -25,8 +25,8 @@ const MOCK_COMPANIES = [
 const TIER_CONFIG = {
     1: { label: 'Tier 1', subtitle: 'Gold', color: '#fbbf24' },
     2: { label: 'Tier 2', subtitle: 'Red', color: '#ef4444' },
-    3: { label: 'Tier 3', subtitle: 'Orange', color: '#fb923c' },
-    4: { label: 'Tier 4', subtitle: 'Deep Orange', color: '#f97316' },
+    3: { label: 'Tier 3', subtitle: 'Purple', color: '#a855f7' },
+    4: { label: 'Tier 4', subtitle: 'Green', color: '#10b981' },
     0: { label: 'Unknown', subtitle: 'Grey', color: '#71717a' },
 };
 
@@ -41,8 +41,8 @@ const FILTER_PILLS = [
     { value: 'all', label: 'All', color: '#fb923c' },
     { value: 1, label: '🥇 Tier 1', color: '#fbbf24' },
     { value: 2, label: '🔴 Tier 2', color: '#ef4444' },
-    { value: 3, label: '🟠 Tier 3', color: '#fb923c' },
-    { value: 4, label: '🔥 Tier 4', color: '#f97316' },
+    { value: 3, label: '🟣 Tier 3', color: '#a855f7' },
+    { value: 4, label: '🟢 Tier 4', color: '#10b981' },
     { value: 0, label: '⚪ Unknown', color: '#71717a' },
 ];
 
