@@ -39,8 +39,8 @@ const AdminLogin = () => {
             background: 'var(--bg-deep)', position: 'relative', overflow: 'hidden'
         }}>
             {/* Glows */}
-            <div style={{ position: 'absolute', top: '10%', left: '25%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(251,146,60,0.1), transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
-            <div style={{ position: 'absolute', bottom: '10%', right: '25%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(249,115,22,0.05), transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
+            <div style={{ position: 'absolute', top: '10%', left: '25%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(59,130,246,0.1), transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
+            <div style={{ position: 'absolute', bottom: '10%', right: '25%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(37,99,235,0.05), transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
 
             <motion.div
                 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
@@ -48,7 +48,7 @@ const AdminLogin = () => {
                 style={{ width: '100%', maxWidth: '420px', padding: '40px', borderRadius: '24px', position: 'relative', zIndex: 10 }}
             >
                 <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                    <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg,#fb923c,#f97316)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                         <Shield size={32} color="#fff" />
                     </div>
                     <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', margin: 0 }}>Admin Portal</h2>
@@ -101,7 +101,7 @@ const AdminLogin = () => {
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                             width: '100%', padding: '14px', marginTop: '10px',
-                            background: 'linear-gradient(135deg,#fb923c,#f97316)', border: 'none', borderRadius: '12px',
+                            background: 'linear-gradient(135deg,#3b82f6,#2563eb)', border: 'none', borderRadius: '12px',
                             color: '#fff', fontSize: '15px', fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
                         }}
                     >

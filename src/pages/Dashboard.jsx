@@ -38,12 +38,12 @@ const SORT_OPTIONS = [
 
 // Tier filter pills: 'all' means show everything
 const FILTER_PILLS = [
-    { value: 'all', label: 'All', color: '#fb923c' },
+    { value: 'all', label: 'All', color: '#3b82f6' },
     { value: 1, label: '🥇 Tier 1', color: '#fbbf24' },
     { value: 2, label: '🔴 Tier 2', color: '#ef4444' },
     { value: 3, label: '🟣 Tier 3', color: '#a855f7' },
     { value: 4, label: '🟢 Tier 4', color: '#10b981' },
-    { value: 0, label: '⚪ Unknown', color: '#71717a' },
+    { value: 0, label: '⚪ Unknown', color: '#64748b' },
 ];
 
 const PHASE_PCT_ADMIN = {
@@ -109,12 +109,12 @@ const CustomSelect = ({ value, onChange }) => {
                                 style={{
                                     width: '100%', padding: '10px 16px', textAlign: 'left',
                                     fontSize: '14px',
-                                    color: value === opt.value ? '#fb923c' : '#e4e4e7',
-                                    background: value === opt.value ? 'rgba(251,146,60,0.15)' : 'transparent',
+                                    color: value === opt.value ? '#3b82f6' : '#e4e4e7',
+                                    background: value === opt.value ? 'rgba(59,130,246,0.15)' : 'transparent',
                                     border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .15s',
                                 }}
                                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                onMouseLeave={e => e.currentTarget.style.background = value === opt.value ? 'rgba(251,146,60,0.15)' : 'transparent'}
+                                onMouseLeave={e => e.currentTarget.style.background = value === opt.value ? 'rgba(59,130,246,0.15)' : 'transparent'}
                             >
                                 {opt.label}
                             </button>
@@ -274,11 +274,11 @@ const Dashboard = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2.5rem' }}>
                     <div style={{
                         width: '40px', height: '40px', borderRadius: '12px',
-                        background: 'linear-gradient(135deg,#fb923c,#f97316)',
+                        background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 700, fontSize: '18px', color: '#fff',
-                    }}>K</div>
-                    <span style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>Admin Panel</span>
+                    }}>R</div>
+                    <span style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>Rev-Ops Console</span>
                 </div>
 
                 <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -289,10 +289,10 @@ const Dashboard = () => {
                             cursor: 'pointer', fontFamily: 'inherit', fontSize: '15px',
                             fontWeight: activeTab === item.key ? 600 : 400,
                             background: activeTab === item.key
-                                ? 'linear-gradient(135deg,#fb923c,#f97316)'
+                                ? 'linear-gradient(135deg,#3b82f6,#2563eb)'
                                 : 'transparent',
                             color: activeTab === item.key ? '#fff' : '#a1a1aa',
-                            boxShadow: activeTab === item.key ? '0 4px 14px rgba(251,146,60,0.35)' : 'none',
+                            boxShadow: activeTab === item.key ? '0 4px 14px rgba(59,130,246,0.35)' : 'none',
                             transition: 'all 0.25s',
                         }}>
                             {item.icon}
@@ -385,7 +385,7 @@ const Dashboard = () => {
                                                 >
                                                     <Cell fill="#10b981" />
                                                     <Cell fill="#f43f5e" />
-                                                    <Cell fill="#fb923c" />
+                                                    <Cell fill="#3b82f6" />
                                                 </Pie>
                                                 <Tooltip
                                                     contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
@@ -407,7 +407,7 @@ const Dashboard = () => {
                                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                                 <XAxis dataKey="month" stroke="#71717a" fontSize={12} />
                                                 <YAxis yAxisId="left" stroke="#38bdf8" fontSize={12} orientation="left" />
-                                                <YAxis yAxisId="right" stroke="#fb923c" fontSize={12} orientation="right" />
+                                                <YAxis yAxisId="right" stroke="#3b82f6" fontSize={12} orientation="right" />
                                                 <Tooltip
                                                     contentStyle={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
                                                 />
@@ -427,9 +427,9 @@ const Dashboard = () => {
                                                     type="monotone"
                                                     dataKey="revenue"
                                                     name="Revenue ($)"
-                                                    stroke="#fb923c"
+                                                    stroke="#3b82f6"
                                                     strokeWidth={3}
-                                                    dot={{ fill: '#fb923c', r: 5 }}
+                                                    dot={{ fill: '#3b82f6', r: 5 }}
                                                     activeDot={{ r: 8 }}
                                                 />
                                             </LineChart>
@@ -455,10 +455,10 @@ const Dashboard = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                         <div style={{
                                             width: '46px', height: '46px', borderRadius: '50%',
-                                            background: 'rgba(251,146,60,0.1)',
+                                            background: 'rgba(59,130,246,0.1)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         }}>
-                                            <Users size={20} color="#fb923c" />
+                                            <Users size={20} color="#3b82f6" />
                                         </div>
                                         <div>
                                             <div style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>Active Client #{i}</div>
@@ -530,7 +530,7 @@ const Dashboard = () => {
                         >
                             {MOCK_ONGOING_PROJECTS.map(proj => {
                                 const projPct = PHASE_PCT_ADMIN[proj.phase] ?? 0;
-                                const projColor = projPct === 100 ? '#34d399' : projPct >= 60 ? '#fb923c' : '#fbbf24';
+                                const projColor = projPct === 100 ? '#34d399' : projPct >= 60 ? '#3b82f6' : '#64748b';
                                 const formattedPhase = proj.phase.charAt(0).toUpperCase() + proj.phase.slice(1).replace('-', ' ');
 
                                 return (
@@ -544,8 +544,8 @@ const Dashboard = () => {
                                             </div>
                                             <span style={{
                                                 padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                                                background: 'rgba(251,146,60,0.1)', color: '#fb923c',
-                                                border: '1px solid rgba(251,146,60,0.2)',
+                                                background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
+                                                border: '1px solid rgba(59,130,246,0.2)',
                                             }}>
                                                 Team: {proj.team}
                                             </span>
@@ -576,8 +576,8 @@ const Dashboard = () => {
                                                     style={{
                                                         height: '100%', borderRadius: '99px',
                                                         background: projPct === 100 ? 'linear-gradient(90deg,#059669,#34d399)'
-                                                            : projPct >= 60 ? 'linear-gradient(90deg,#fb923c,#f97316)'
-                                                                : 'linear-gradient(90deg,#d97706,#fbbf24)',
+                                                            : projPct >= 60 ? 'linear-gradient(90deg,#3b82f6,#2563eb)'
+                                                                : 'linear-gradient(90deg,#64748b,#94a3b8)',
                                                     }}
                                                 />
                                             </div>
@@ -595,10 +595,10 @@ const Dashboard = () => {
                             style={{ display: 'grid', gap: '18px' }}
                         >
                             {[1, 2, 3].map(i => (
-                                <div key={i} className="glass" style={{ padding: '28px', display: 'flex', borderLeft: '4px solid #f97316' }}>
+                                <div key={i} className="glass" style={{ padding: '28px', display: 'flex', borderLeft: '4px solid #3b82f6' }}>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                                            <CheckCircle2 size={20} color="#f97316" />
+                                            <CheckCircle2 size={20} color="#3b82f6" />
                                             <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff' }}>Project Alpha-0{i}</h4>
                                         </div>
                                         <p style={{ margin: 0, color: '#a1a1aa', maxWidth: '480px' }}>
@@ -606,7 +606,7 @@ const Dashboard = () => {
                                         </p>
                                     </div>
                                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '20px' }}>
-                                        <div style={{ color: '#fb923c', fontWeight: 700, fontSize: '20px' }}>$45,000</div>
+                                        <div style={{ color: '#3b82f6', fontWeight: 700, fontSize: '20px' }}>$45,000</div>
                                         <div style={{ color: '#71717a', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>Completed Dec 2023</div>
                                     </div>
                                 </div>
@@ -620,7 +620,7 @@ const Dashboard = () => {
                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-                                <button onClick={() => setIsAddingTeam(!isAddingTeam)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '12px', background: 'linear-gradient(135deg,#fb923c,#f97316)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
+                                <button onClick={() => setIsAddingTeam(!isAddingTeam)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '12px', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
                                     <Plus size={16} /> Add New Team
                                 </button>
                             </div>
@@ -629,7 +629,7 @@ const Dashboard = () => {
                             <AnimatePresence>
                                 {isAddingTeam && (
                                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden', marginBottom: '24px' }}>
-                                        <div className="glass" style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', borderLeft: '4px solid #fb923c' }}>
+                                        <div className="glass" style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', borderLeft: '4px solid #3b82f6' }}>
                                             <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Team Name</label><input value={newTeamDraft.name} onChange={e => setNewTeamDraft(d => ({ ...d, name: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
                                             <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Lead Name</label><input value={newTeamDraft.lead_name} onChange={e => setNewTeamDraft(d => ({ ...d, lead_name: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
                                             <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Total Members</label><input type="number" value={newTeamDraft.total_members} onChange={e => setNewTeamDraft(d => ({ ...d, total_members: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
@@ -654,7 +654,7 @@ const Dashboard = () => {
                                         const statusLabel = team.status === 'available' ? 'Available' : team.status === 'partial' ? 'Partial' : 'Busy';
                                         const availPct = team.total_members > 0 ? Math.round((team.available_members / team.total_members) * 100) : 0;
                                         const projPct = PHASE_PCT_ADMIN[team.phase] ?? 0;
-                                        const projColor = projPct === 100 ? '#34d399' : projPct >= 60 ? '#fb923c' : '#fbbf24';
+                                        const projColor = projPct === 100 ? '#34d399' : projPct >= 60 ? '#3b82f6' : '#64748b';
 
                                         return (
                                             <div key={team.id} className="glass" style={{ padding: '22px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -683,14 +683,14 @@ const Dashboard = () => {
                                                         </div>
                                                     </div>
 
-                                                    <div style={{ marginBottom: '14px', padding: '12px', borderRadius: '10px', background: team.project ? 'rgba(251,146,60,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${team.project ? 'rgba(251,146,60,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+                                                    <div style={{ marginBottom: '14px', padding: '12px', borderRadius: '10px', background: team.project ? 'rgba(59,130,246,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${team.project ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
                                                         <div style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Ongoing Project</div>
                                                         {team.project ? (
                                                             <>
                                                                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#e4e4e7', marginBottom: '8px' }}>{team.project}</div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{ fontSize: '11px', color: '#71717a' }}>{team.phase.charAt(0).toUpperCase() + team.phase.slice(1)}</span><span style={{ fontSize: '11px', fontWeight: 700, color: projColor }}>{projPct}%</span></div>
                                                                 <div style={{ height: '5px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                                                                    <div style={{ height: '100%', borderRadius: '99px', width: `${projPct}%`, background: projPct === 100 ? 'linear-gradient(90deg,#059669,#34d399)' : projPct >= 60 ? 'linear-gradient(90deg,#fb923c,#f97316)' : 'linear-gradient(90deg,#d97706,#fbbf24)' }} />
+                                                                    <div style={{ height: '100%', borderRadius: '99px', width: `${projPct}%`, background: projPct === 100 ? 'linear-gradient(90deg,#059669,#34d399)' : projPct >= 60 ? 'linear-gradient(90deg,#3b82f6,#2563eb)' : 'linear-gradient(90deg,#64748b,#94a3b8)' }} />
                                                                 </div>
                                                             </>
                                                         ) : <div style={{ fontSize: '12px', color: '#52525b', fontStyle: 'italic' }}>No active project</div>}
@@ -698,14 +698,14 @@ const Dashboard = () => {
 
                                                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
                                                         {team.skills.map(s => (
-                                                            <span key={s} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: 'rgba(251,146,60,0.15)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.25)' }}>{s}</span>
+                                                            <span key={s} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)' }}>{s}</span>
                                                         ))}
                                                     </div>
 
                                                     {/* Auth Editing Section */}
                                                     {editingTeamId === team.id ? (
-                                                        <div style={{ marginTop: 'auto', background: 'rgba(251,146,60,0.08)', border: '1px dashed rgba(251,146,60,0.3)', padding: '12px', borderRadius: '10px' }}>
-                                                            <div style={{ fontSize: '11px', color: '#fb923c', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 700 }}>Update Team Login</div>
+                                                        <div style={{ marginTop: 'auto', background: 'rgba(59,130,246,0.08)', border: '1px dashed rgba(59,130,246,0.3)', padding: '12px', borderRadius: '10px' }}>
+                                                            <div style={{ fontSize: '11px', color: '#3b82f6', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 700 }}>Update Team Login</div>
                                                             <input value={editTeamDraft.username} onChange={e => setEditTeamDraft(t => ({ ...t, username: e.target.value }))} className="input-field" placeholder="Username" style={{ width: '100%', padding: '8px', marginBottom: '8px', fontSize: '12px' }} />
                                                             <input value={editTeamDraft.password} onChange={e => setEditTeamDraft(t => ({ ...t, password: e.target.value }))} className="input-field" placeholder="Password" style={{ width: '100%', padding: '8px', marginBottom: '10px', fontSize: '12px' }} />
                                                             <div style={{ display: 'flex', gap: '8px' }}>

@@ -66,7 +66,7 @@ const FormPage = () => {
                     <p style={{ color: '#a1a1aa', lineHeight: 1.6, marginBottom: '32px' }}>Your inquiry has been logged and sent to our team. We will review your requirements and get back to you shortly.</p>
                     <button
                         onClick={() => navigate('/')}
-                        style={{ background: 'linear-gradient(135deg,#fb923c,#f97316)', border: 'none', color: '#fff', padding: '12px 32px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}
+                        style={{ background: 'linear-gradient(135deg,#3b82f6,#2563eb)', border: 'none', color: '#fff', padding: '12px 32px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}
                     >
                         Back to Home
                     </button>
@@ -91,7 +91,7 @@ const FormPage = () => {
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                     <h2 style={{
                         margin: '0 0 12px', fontSize: '2.5rem', fontWeight: 800,
-                        background: 'linear-gradient(135deg,#fff 30%,#fb923c 100%)',
+                        background: 'linear-gradient(135deg,#fff 30%,#3b82f6 100%)',
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                     }}>Project Inquiry</h2>
                     <p style={{ color: '#71717a', fontSize: '15px' }}>Tell us about your requirements and we'll connect you with a team.</p>

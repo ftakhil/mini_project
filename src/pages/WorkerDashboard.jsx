@@ -17,7 +17,7 @@ const MOCK_WORKER = {
 
 const MOCK_CLIENTS = [
     { id: 1, company: 'Global Systems', email: 'contact@globalsys.com', tier: 1, tierColor: '#fbbf24', since: 'Jan 2024' },
-    { id: 2, company: 'Cloud Spire', email: 'admin@cloudspire.io', tier: 2, tierColor: '#ef4444', since: 'Mar 2024' },
+    { id: 2, company: 'Cloud Spire', email: 'admin@cloudspire.io', tier: 2, tierColor: '#3b82f6', since: 'Mar 2024' },
     { id: 3, company: 'Alpha Tech', email: 'info@alphatech.com', tier: 3, tierColor: '#a855f7', since: 'Nov 2023' },
 ];
 
@@ -70,9 +70,9 @@ const Toggle = ({ value, onChange }) => (
     }}>
         <div style={{
             width: '48px', height: '26px', borderRadius: '13px', position: 'relative',
-            background: value ? 'linear-gradient(135deg,#fb923c,#f97316)' : 'rgba(255,255,255,0.15)',
+            background: value ? 'linear-gradient(135deg,#3b82f6,#2563eb)' : 'rgba(255,255,255,0.15)',
             transition: 'background 0.3s',
-            boxShadow: value ? '0 0 12px rgba(251,146,60,0.5)' : 'none',
+            boxShadow: value ? '0 0 12px rgba(59,130,246,0.4)' : 'none',
         }}>
             <motion.div
                 animate={{ x: value ? 24 : 2 }}
@@ -84,7 +84,7 @@ const Toggle = ({ value, onChange }) => (
                 }}
             />
         </div>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: value ? '#fb923c' : '#71717a' }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: value ? '#3b82f6' : '#71717a' }}>
             {value ? 'Available' : 'On Leave'}
         </span>
     </button>
@@ -164,7 +164,7 @@ const PhaseSelect = ({ value, onChange, disabled }) => {
                                 display: 'block',
                             }}
                             onMouseEnter={e => { if (value !== ph.value && ph.value !== '') e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = value === ph.value ? 'rgba(139,92,246,0.18)' : 'transparent'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = value === ph.value ? 'rgba(59,130,246,0.18)' : 'transparent'; }}
                         >
                             {ph.label}
                         </button>
@@ -205,7 +205,7 @@ const PhaseSelect = ({ value, onChange, disabled }) => {
 /* ── Progress Bar ──────────────────────────────────────── */
 const ProgressBar = ({ phase }) => {
     const pct = PHASE_PCT[phase] ?? 0;
-    const color = pct === 100 ? '#34d399' : pct >= 60 ? '#8b5cf6' : '#fbbf24';
+    const color = pct === 100 ? '#34d399' : pct >= 60 ? '#3b82f6' : '#64748b';
     return (
         <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -225,8 +225,8 @@ const ProgressBar = ({ phase }) => {
                         background: pct === 100
                             ? 'linear-gradient(90deg,#059669,#34d399)'
                             : pct >= 60
-                                ? 'linear-gradient(90deg,#fb923c,#f97316)'
-                                : 'linear-gradient(90deg,#d97706,#fbbf24)',
+                                ? 'linear-gradient(90deg,#3b82f6,#2563eb)'
+                                : 'linear-gradient(90deg,#64748b,#94a3b8)',
                     }}
                 />
             </div>
@@ -358,9 +358,9 @@ const WorkerDashboard = () => {
                 <div style={{ marginBottom: '1.5rem' }}>
                     <div style={{
                         width: '52px', height: '52px', borderRadius: '14px',
-                        background: 'linear-gradient(135deg,#fb923c,#f97316)',
+                        background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginBottom: '12px', boxShadow: '0 8px 16px rgba(251,146,60,0.2)',
+                        marginBottom: '12px', boxShadow: '0 8px 16px rgba(59,130,246,0.2)',
                     }}>
                         <Users size={24} color="#fff" />
                     </div>
@@ -387,17 +387,17 @@ const WorkerDashboard = () => {
                             cursor: 'pointer', fontFamily: 'inherit', fontSize: '14px',
                             fontWeight: activeTab === item.key ? 600 : 400,
                             background: activeTab === item.key
-                                ? 'linear-gradient(135deg,#fb923c,#f97316)' : 'transparent',
+                                ? 'linear-gradient(135deg,#3b82f6,#2563eb)' : 'transparent',
                             color: activeTab === item.key ? '#fff' : '#a1a1aa',
-                            boxShadow: activeTab === item.key ? '0 4px 14px rgba(251,146,60,0.35)' : 'none',
+                            boxShadow: activeTab === item.key ? '0 4px 14px rgba(59,130,246,0.35)' : 'none',
                             transition: 'all 0.25s',
                         }}>
                             {item.icon}
                             <span>{item.label}</span>
                             {item.key === 'contracts' && (
                                 <span style={{
-                                    marginLeft: 'auto', background: '#fbbf24',
-                                    color: '#000', fontSize: '10px', fontWeight: 700,
+                                    marginLeft: 'auto', background: '#3b82f6',
+                                    color: '#fff', fontSize: '10px', fontWeight: 700,
                                     borderRadius: '99px', padding: '2px 7px',
                                 }}>
                                     {contracts.filter(c => c.status === 'pending').length}
@@ -661,9 +661,9 @@ const WorkerDashboard = () => {
                                                                 border: 'none', borderRadius: '10px',
                                                                 cursor: 'pointer',
                                                                 fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
-                                                                background: 'linear-gradient(135deg,#7c3aed,#8b5cf6)',
+                                                                background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
                                                                 color: '#fff',
-                                                                boxShadow: '0 4px 14px rgba(139,92,246,0.35)',
+                                                                boxShadow: '0 4px 14px rgba(59,130,246,0.35)',
                                                                 transition: 'all 0.2s',
                                                             }}
                                                         >
@@ -675,7 +675,7 @@ const WorkerDashboard = () => {
                                                     {/* Submitted phase label */}
                                                     {contract.submittedPhase && (
                                                         <div style={{ marginTop: '10px', fontSize: '12px', color: '#71717a' }}>
-                                                            Last submitted: <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{submittedLabel}</span>
+                                                            Last submitted: <span style={{ color: '#3b82f6', fontWeight: 600 }}>{submittedLabel}</span>
                                                         </div>
                                                     )}
 

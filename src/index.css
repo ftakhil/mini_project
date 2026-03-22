@@ -1,20 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
 :root {
-  --bg-deep: #000000;
-  --bg-darker: #050505;
-  --bg-card: #0a0a0a;
-  --accent-primary: #fb923c;
-  --accent-secondary: #f97316;
-  --accent-glow: rgba(251, 146, 60, 0.3);
-  --text-bright: #ffffff;
-  --text-dim: #a1a1aa;
+  --bg-deep: #0f172a;
+  --bg-darker: #1e293b;
+  --bg-card: #1e293b;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.2);
+  --text-bright: #f8fafc;
+  --text-dim: #94a3b8;
 
   --tier-gold: #fbbf24;
   --tier-red: #ef4444;
   --tier-purple: #a855f7;
   --tier-green: #10b981;
-  --tier-grey: #71717a;
+  --tier-grey: #64748b;
 
   font-family: 'Outfit', sans-serif;
   line-height: 1.5;
@@ -34,9 +34,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top right, rgba(251, 146, 60, 0.08), transparent),
-    radial-gradient(circle at bottom left, rgba(251, 146, 60, 0.05), transparent),
-    var(--bg-deep);
+  background: var(--bg-deep);
 }
 
 * {
