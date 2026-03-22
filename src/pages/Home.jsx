@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Zap, Shield, Users, Activity, Briefcase } from 'lucide-react';
+import { Shield, Activity, Briefcase } from 'lucide-react';
 
 const Home = () => {
     const navigate = useNavigate();
@@ -61,8 +61,8 @@ const Home = () => {
                     maxWidth: '600px',
                     lineHeight: 1.6,
                 }}>
-                    Next-generation revenue operations and enterprise management. 
-                    Streamlined workflows for professional teams.
+                    Next-generation revenue operations and lead intelligence. 
+                    Data-driven insights for smarter business decisions.
                 </p>
 
                 {/* Divider line */}
@@ -72,88 +72,67 @@ const Home = () => {
                     borderRadius: '99px', margin: '24px auto 40px',
                 }} />
 
-                {/* Swapped Links Section */}
+                {/* Action Buttons */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4, duration: 0.6 }}
                     style={{ marginTop: '0px', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}
                 >
-                    {/* Top Row: Simulation Button */}
+                    {/* Inquiry Button */}
                     <button
                         onClick={() => navigate('/form')}
-                        style={{ 
-                            background: 'transparent', 
-                            border: '1px solid var(--text-dim)', 
-                            color: 'var(--text-dim)', 
-                            padding: '10px 24px', 
-                            borderRadius: '12px', 
-                            cursor: 'pointer', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '10px', 
-                            fontSize: '14px', 
-                            fontWeight: 500, 
-                            transition: 'all 0.2s' 
+                        style={{
+                            background: 'var(--accent-primary)',
+                            border: 'none',
+                            color: '#fff',
+                            padding: '14px 32px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: '15px',
+                            fontWeight: 700,
+                            transition: 'all 0.2s',
+                            fontFamily: 'inherit',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-bright)'; e.currentTarget.style.borderColor = 'var(--text-bright)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--text-dim)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.filter = 'brightness(1.1)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
                     >
-                        <Activity size={18} /> External Data Entry Simulation
+                        <Activity size={18} /> Submit a Project Inquiry
                     </button>
 
-                    <div style={{ width: '100px', height: '1px', background: 'rgba(255,255,255,0.06)', margin: '10px 0' }} />
+                    <div style={{ width: '100px', height: '1px', background: 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
 
-                    {/* Bottom Row: Portal Logins */}
-                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                        <button
-                            onClick={() => navigate('/team-login')}
-                            style={{ 
-                                background: 'rgba(255,255,255,0.05)', 
-                                border: '1px solid rgba(255,255,255,0.1)', 
-                                color: 'var(--text-bright)', 
-                                padding: '14px 28px', 
-                                borderRadius: '12px', 
-                                cursor: 'pointer', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '10px', 
-                                fontSize: '15px', 
-                                fontWeight: 600, 
-                                transition: 'all 0.2s' 
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                        >
-                            <Users size={18} /> Team Portal
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin-login')}
-                            style={{ 
-                                background: 'var(--accent-primary)', 
-                                border: 'none', 
-                                color: '#fff', 
-                                padding: '14px 32px', 
-                                borderRadius: '12px', 
-                                cursor: 'pointer', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '10px', 
-                                fontSize: '15px', 
-                                fontWeight: 700, 
-                                transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.filter = 'brightness(1.1)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
-                        >
-                            <Briefcase size={18} /> Admin Console
-                        </button>
-                    </div>
+                    {/* Admin Console */}
+                    <button
+                        onClick={() => navigate('/admin-login')}
+                        style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'var(--text-bright)',
+                            padding: '12px 24px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            transition: 'all 0.2s',
+                            fontFamily: 'inherit',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                    >
+                        <Briefcase size={18} /> Admin Console
+                    </button>
                 </motion.div>
 
                 {/* Feature pills */}
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '60px', flexWrap: 'wrap' }}>
-                    {['Enterprise-Grade', 'Real-time Analytics', 'Workflow Automation'].map(tag => (
+                    {['Lead Intelligence', 'Data Enrichment', 'Analytics Reports'].map(tag => (
                         <span key={tag} style={{
                             padding: '6px 16px', borderRadius: '8px',
                             background: 'rgba(255,255,255,0.03)',

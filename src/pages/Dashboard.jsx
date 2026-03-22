@@ -1,733 +1,1031 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Users, Building, CheckCircle2,
-    LogOut, Mail, ChevronRight, ChevronDown, Briefcase, Activity, Clock, Plus, Save, X, Pencil
+    LogOut, Activity, FileText, Download, FileSpreadsheet, Send as SendIcon
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import {
-    PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis,
+    PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
     CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
-const MOCK_COMPANIES = [
-    { id: 1, name: "Global Systems", email: "contact@globalsys.com", tier: 1 },
-    { id: 2, name: "Nexus Innovations", email: "hello@nexus.io", tier: 2 },
-    { id: 3, name: "Alpha Tech", email: "info@alphatech.com", tier: 3 },
-    { id: 4, name: "Beta Solutions", email: "support@beta.net", tier: 3 },
-    { id: 5, name: "Zephyr Energy", email: "zephyr@energy.com", tier: 4 },
-    { id: 6, name: "Unknown Data", email: "missing@info.com", tier: 0 },
-    { id: 7, name: "Prime Logistics", email: "ops@prime.com", tier: 1 },
-    { id: 8, name: "Cloud Spire", email: "admin@cloudspire.io", tier: 2 },
-];
+const CHART_COLORS = ['#3b82f6', '#fbbf24', '#ef4444', '#a855f7', '#10b981', '#f97316', '#06b6d4', '#ec4899'];
 
-const TIER_CONFIG = {
-    1: { label: 'Tier 1', subtitle: 'Gold', color: '#fbbf24' },
-    2: { label: 'Tier 2', subtitle: 'Red', color: '#ef4444' },
-    3: { label: 'Tier 3', subtitle: 'Purple', color: '#a855f7' },
-    4: { label: 'Tier 4', subtitle: 'Green', color: '#10b981' },
-    0: { label: 'Unknown', subtitle: 'Grey', color: '#71717a' },
-};
-
-const SORT_OPTIONS = [
-    { value: 'none', label: 'Sort By' },
-    { value: 'tier-asc', label: 'Tier (1 → 4)' },
-    { value: 'tier-desc', label: 'Tier (4 → 1)' },
-];
-
-// Tier filter pills: 'all' means show everything
-const FILTER_PILLS = [
-    { value: 'all', label: 'All', color: '#3b82f6' },
-    { value: 1, label: '🥇 Tier 1', color: '#fbbf24' },
-    { value: 2, label: '🔴 Tier 2', color: '#ef4444' },
-    { value: 3, label: '🟣 Tier 3', color: '#a855f7' },
-    { value: 4, label: '🟢 Tier 4', color: '#10b981' },
-    { value: 0, label: '⚪ Unknown', color: '#64748b' },
-];
-
-const PHASE_PCT_ADMIN = {
-    none: 0, kickoff: 5, requirements: 15, design: 28,
-    development: 50, testing: 68, uat: 80, deployment: 92, completed: 100,
-};
-
-// MOCK_TEAMS removed - now fetched from DB
-
-const MOCK_ONGOING_PROJECTS = [
-    { id: 101, title: 'ERP Migration Q2', client: 'Global Systems', team: 'Alpha Squad', phase: 'testing', value: '$28,000', deadline: 'Apr 30, 2026' },
-    { id: 102, title: 'Data Lake Integration', client: 'Nexus Innovations', team: 'Beta Force', phase: 'development', value: '$45,000', deadline: 'Jul 15, 2026' },
-    { id: 103, title: 'Smart Factory IoT', client: 'Zephyr Energy', team: 'Gamma Unit', phase: 'uat', value: '$60,000', deadline: 'May 10, 2026' },
-    { id: 104, title: 'Customer Portal Revamp', client: 'Alpha Tech', team: 'Delta Core', phase: 'deployment', value: '$18,500', deadline: 'Mar 28, 2026' },
-];
-
-/* ── Custom Dark Sort Dropdown ─────────────────────────── */
-const CustomSelect = ({ value, onChange }) => {
-    const [open, setOpen] = useState(false);
-    const ref = useRef(null);
-    const current = SORT_OPTIONS.find(o => o.value === value) || SORT_OPTIONS[0];
-
-    useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    return (
-        <div ref={ref} style={{ position: 'relative', minWidth: '160px' }}>
-            <button
-                onClick={() => setOpen(o => !o)}
-                style={{
-                    width: '100%', display: 'flex', alignItems: 'center',
-                    justifyContent: 'space-between', gap: '8px',
-                    padding: '9px 16px',
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: '12px', color: '#ffffff',
-                    fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit',
-                }}
-            >
-                {current.label}
-                <ChevronDown size={15} style={{ transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0)' }} />
-            </button>
-
-            <AnimatePresence>
-                {open && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                        style={{
-                            position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                            minWidth: '100%', background: '#1e1e28',
-                            border: '1px solid rgba(255,255,255,0.12)',
-                            borderRadius: '12px', overflow: 'hidden', zIndex: 999,
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                        }}
-                    >
-                        {SORT_OPTIONS.map(opt => (
-                            <button
-                                key={opt.value}
-                                onClick={() => { onChange(opt.value); setOpen(false); }}
-                                style={{
-                                    width: '100%', padding: '10px 16px', textAlign: 'left',
-                                    fontSize: '14px',
-                                    color: value === opt.value ? '#3b82f6' : '#e4e4e7',
-                                    background: value === opt.value ? 'rgba(59,130,246,0.15)' : 'transparent',
-                                    border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .15s',
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                onMouseLeave={e => e.currentTarget.style.background = value === opt.value ? 'rgba(59,130,246,0.15)' : 'transparent'}
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-};
-
-/* ── Dashboard ─────────────────────────────────────────── */
 const Dashboard = () => {
-    const [activeTab, setActiveTab] = useState('analytics');
-    const [sortBy, setSortBy] = useState('none');
-    const [filterTier, setFilterTier] = useState('all');
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('analytics');
 
-    // Teams State
-    const [teams, setTeams] = useState([]);
-    const [loadingTeams, setLoadingTeams] = useState(true);
-    const [editingTeamId, setEditingTeamId] = useState(null);
-    const [editTeamDraft, setEditTeamDraft] = useState({ username: '', password: '' });
-
-    // Add New Team State
-    const [isAddingTeam, setIsAddingTeam] = useState(false);
-    const [newTeamDraft, setNewTeamDraft] = useState({ name: '', lead_name: '', total_members: 1, available_members: 1, skills: '', status: 'available', username: '', password: '' });
-
-    // Analytics State
-    const [analyticsData, setAnalyticsData] = useState({
-        meetings: [],
-        projectsHistory: []
-    });
-    const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+    // Leads state
+    const [leads, setLeads] = useState([]);
+    const [loadingLeads, setLoadingLeads] = useState(true);
+    const [slackSending, setSlackSending] = useState(null); // lead id being sent
 
     useEffect(() => {
-        if (localStorage.getItem('adminToken') !== 'true') {
+        if (!localStorage.getItem('adminToken')) {
             navigate('/admin-login');
             return;
         }
-
-        const fetchTeams = async () => {
-            const { data, error } = await supabase.from('teams').select('*, contracts(title, phase, status)').order('id', { ascending: true });
-            if (!error && data) {
-                const mapped = data.map(t => {
-                    const activeC = t.contracts.find(c => c.status === 'accepted');
-                    return {
-                        ...t,
-                        project: activeC?.title || null,
-                        phase: activeC?.phase || 'none'
-                    };
-                });
-                setTeams(mapped);
-            }
-            setLoadingTeams(false);
-        };
-        fetchTeams();
-
-        const fetchAnalytics = async () => {
-            setLoadingAnalytics(true);
-
-            // 1. Meeting Success (Leads)
-            const { data: leads } = await supabase.from('leads').select('status');
-            if (leads) {
-                const successStatuses = ['routed', 'qualified', 'success'];
-                const successCount = leads.filter(l => successStatuses.includes(l.status)).length;
-                const failedCount = leads.filter(l => l.status === 'rejected' || l.status === 'failed').length;
-                const otherCount = leads.length - (successCount + failedCount);
-
-                setAnalyticsData(prev => ({
-                    ...prev,
-                    meetings: [
-                        { name: 'Successful', value: successCount || 12 }, // Fallback to mock if empty
-                        { name: 'Failed', value: failedCount || 4 },
-                        { name: 'In Progress', value: otherCount || 8 }
-                    ]
-                }));
-            }
-
-            // 2. Projects History (Contracts) - Enhanced Mock Data
-            const { data: contracts } = await supabase.from('contracts').select('status, created_at');
-
-            // Comprehensive mock history for visualization
-            const months = ['Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
-            const history = [
-                { month: 'Sept', completed: 4, revenue: 12000 },
-                { month: 'Oct', completed: 7, revenue: 18500 },
-                { month: 'Nov', completed: 5, revenue: 15000 },
-                { month: 'Dec', completed: 12, revenue: 32000 },
-                { month: 'Jan', completed: 9, revenue: 24000 },
-                { month: 'Feb', completed: 15, revenue: 42000 }
-            ];
-
-            setAnalyticsData(prev => ({ ...prev, projectsHistory: history }));
-            setLoadingAnalytics(false);
-        };
-        fetchAnalytics();
+        fetchLeads();
     }, [navigate]);
 
-    const handleSaveTeamAuth = async (id) => {
-        await supabase.from('teams').update({ username: editTeamDraft.username, password: editTeamDraft.password }).eq('id', id);
-        setTeams(prev => prev.map(t => t.id === id ? { ...t, username: editTeamDraft.username, password: editTeamDraft.password } : t));
-        setEditingTeamId(null);
+    const fetchLeads = async () => {
+        setLoadingLeads(true);
+        const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (!error && data) setLeads(data);
+        setLoadingLeads(false);
     };
 
-    const handleAddTeam = async () => {
-        const skillsArray = newTeamDraft.skills.split(',').map(s => s.trim()).filter(s => s);
-        const toInsert = {
-            name: newTeamDraft.name,
-            lead_name: newTeamDraft.lead_name,
-            total_members: parseInt(newTeamDraft.total_members) || 1,
-            available_members: parseInt(newTeamDraft.available_members) || 1,
-            skills: skillsArray.length ? skillsArray : ['General'],
-            status: newTeamDraft.status,
-            username: newTeamDraft.username,
-            password: newTeamDraft.password
+    /* ── Helper functions ──────────────────────────── */
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+    const getBudgetLabel = (v) => {
+        const m = { under_10k: '< ₹10K', '10k_50k': '₹10K–50K', '50k_2l': '₹50K–2L', above_2l: '₹2L+' };
+        return m[v] || v || '—';
+    };
+
+    const getServiceLabel = (v) => {
+        const m = {
+            web_development: 'Web Dev', app_development: 'App Dev', ui_ux_design: 'UI/UX',
+            ai_automation: 'AI/Automation', saas_development: 'SaaS', ecommerce_setup: 'E-commerce', other: 'Other'
+        };
+        return m[v] || v || '—';
+    };
+
+    /* ── Analytics Data Computation ────────────────── */
+    const computeAnalytics = () => {
+        if (leads.length === 0) return null;
+
+        // Industry distribution
+        const industryMap = {};
+        leads.forEach(l => { const k = l.industry || 'Unknown'; industryMap[k] = (industryMap[k] || 0) + 1; });
+        const industryData = Object.entries(industryMap).map(([name, value]) => ({ name, value }));
+
+        // Budget distribution
+        const budgetMap = {};
+        leads.forEach(l => { const k = getBudgetLabel(l.estimated_budget); budgetMap[k] = (budgetMap[k] || 0) + 1; });
+        const budgetData = Object.entries(budgetMap).map(([name, value]) => ({ name, value }));
+
+        // Service demand
+        const serviceMap = {};
+        leads.forEach(l => { const k = getServiceLabel(l.service_required); serviceMap[k] = (serviceMap[k] || 0) + 1; });
+        const serviceData = Object.entries(serviceMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+        // Client type
+        const clientTypeMap = {};
+        leads.forEach(l => { const k = l.client_type || 'Unknown'; clientTypeMap[k] = (clientTypeMap[k] || 0) + 1; });
+        const clientTypeData = Object.entries(clientTypeMap).map(([name, value]) => ({ name, value }));
+
+        // Company size
+        const sizeMap = {};
+        leads.forEach(l => { const k = l.company_size || 'Unknown'; sizeMap[k] = (sizeMap[k] || 0) + 1; });
+        const sizeData = Object.entries(sizeMap).map(([name, value]) => ({ name, value }));
+
+        // Decision maker
+        const dmMap = {};
+        leads.forEach(l => { const k = l.decision_maker || 'Unknown'; dmMap[k] = (dmMap[k] || 0) + 1; });
+        const dmData = Object.entries(dmMap).map(([name, value]) => ({ name, value }));
+
+        // Status
+        const statusMap = {};
+        leads.forEach(l => { const k = (l.status || 'unknown').toUpperCase(); statusMap[k] = (statusMap[k] || 0) + 1; });
+        const statusData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
+
+        return { industryData, budgetData, serviceData, clientTypeData, sizeData, dmData, statusData };
+    };
+
+    const analytics = computeAnalytics();
+
+    /* ── Slack Invite Trigger ──────────────────────── */
+    const handleSlackInvite = async (lead) => {
+        const webhookUrl = import.meta.env.VITE_SLACK_WEBHOOK_URL;
+        if (!webhookUrl) {
+            alert('VITE_SLACK_WEBHOOK_URL is not set in .env');
+            return;
+        }
+        setSlackSending(lead.id);
+        try {
+            await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lead_id: lead.id,
+                    name: lead.name,
+                    email: lead.email,
+                    company: lead.company,
+                }),
+            });
+            // Update lead status in DB
+            await supabase.from('leads').update({ status: 'slack_invited' }).eq('id', lead.id);
+            setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'slack_invited' } : l));
+        } catch (err) {
+            console.error('Slack webhook error:', err);
+            alert('Failed to trigger Slack invite. Check n8n workflow.');
+        }
+        setSlackSending(null);
+    };
+
+    /* ── Report Generation Functions ───────────────── */
+
+    // Individual PDF
+    const generateIndividualPDF = (lead) => {
+        const doc = new jsPDF();
+        const pageW = doc.internal.pageSize.getWidth();
+
+        // Header
+        doc.setFillColor(30, 30, 40);
+        doc.rect(0, 0, pageW, 42, 'F');
+        doc.setFillColor(59, 130, 246);
+        doc.rect(0, 42, pageW, 3, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Rev-Ops', 14, 20);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Lead Intelligence Report', 14, 30);
+        doc.setFontSize(9);
+        doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pageW - 14, 30, { align: 'right' });
+
+        let y = 56;
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(lead.company || 'Unknown Company', 14, y);
+        y += 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Contact: ${lead.name || '—'}  •  ${lead.email || '—'}  •  ${lead.phone || '—'}`, 14, y);
+        y += 14;
+
+        autoTable(doc, {
+            startY: y,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+            bodyStyles: { fontSize: 10 },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55 } },
+            head: [['Field', 'Details']],
+            body: [
+                ['Client Type', lead.client_type || '—'],
+                ['Service Required', getServiceLabel(lead.service_required)],
+                ['Other Service', lead.service_other || 'N/A'],
+                ['Estimated Budget', getBudgetLabel(lead.estimated_budget)],
+                ['Industry', lead.industry || '—'],
+                ['Company Size', lead.company_size || '—'],
+                ['Company Website', lead.company_website || '—'],
+                ['Work Email', lead.work_email || '—'],
+                ['Decision Maker', lead.decision_maker || '—'],
+                ['Website/Social', lead.website_link || '—'],
+                ['Lead Score', lead.lead_score != null ? `${lead.lead_score} / 100` : '—'],
+                ['Status', (lead.status || '—').toUpperCase()],
+                ['Submitted At', fmtDate(lead.created_at)],
+            ],
+        });
+
+        y = doc.lastAutoTable.finalY + 12;
+
+        if (lead.ai_reasoning) {
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(59, 130, 246);
+            doc.text('AI Reasoning', 14, y);
+            y += 7;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(60, 60, 60);
+            const lines = doc.splitTextToSize(lead.ai_reasoning, pageW - 28);
+            doc.text(lines, 14, y);
+            y += lines.length * 5 + 10;
+        }
+
+        if (lead.enriched_data && typeof lead.enriched_data === 'object') {
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(59, 130, 246);
+            doc.text('Enriched Data (Apollo / Scraping)', 14, y);
+            y += 4;
+            const eRows = Object.entries(lead.enriched_data).map(([k, v]) => [
+                k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                typeof v === 'object' ? JSON.stringify(v) : String(v)
+            ]);
+            autoTable(doc, {
+                startY: y, theme: 'striped',
+                headStyles: { fillColor: [30, 30, 40], textColor: 255, fontSize: 10 },
+                bodyStyles: { fontSize: 9 },
+                head: [['Property', 'Value']],
+                body: eRows,
+            });
+        }
+
+        if (lead.message) {
+            y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : y + 12;
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(59, 130, 246);
+            doc.text('Client Message', 14, y);
+            y += 7;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(60, 60, 60);
+            doc.text(doc.splitTextToSize(lead.message, pageW - 28), 14, y);
+        }
+
+        const pc = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pc; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text('Rev-Ops  •  Confidential', 14, doc.internal.pageSize.getHeight() - 10);
+            doc.text(`Page ${i}/${pc}`, pageW - 14, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+        }
+        doc.save(`RevOps_Lead_${(lead.company || 'Unknown').replace(/\s+/g, '_')}.pdf`);
+    };
+
+    // Individual Excel
+    const generateIndividualExcel = (lead) => {
+        const wb = XLSX.utils.book_new();
+        const rows = [
+            ['Field', 'Value'],
+            ['Company', lead.company || '—'], ['Name', lead.name || '—'], ['Email', lead.email || '—'],
+            ['Phone', lead.phone || '—'], ['Client Type', lead.client_type || '—'],
+            ['Service', getServiceLabel(lead.service_required)], ['Other Service', lead.service_other || 'N/A'],
+            ['Budget', getBudgetLabel(lead.estimated_budget)], ['Industry', lead.industry || '—'],
+            ['Company Size', lead.company_size || '—'], ['Company Website', lead.company_website || '—'],
+            ['Work Email', lead.work_email || '—'], ['Decision Maker', lead.decision_maker || '—'],
+            ['Website/Social', lead.website_link || '—'], ['Lead Score', lead.lead_score ?? '—'],
+            ['AI Reasoning', lead.ai_reasoning || '—'], ['Status', (lead.status || '—').toUpperCase()],
+            ['Submitted', fmtDate(lead.created_at)], ['Message', lead.message || '—'],
+        ];
+        if (lead.enriched_data && typeof lead.enriched_data === 'object') {
+            rows.push(['', ''], ['--- ENRICHED DATA ---', '']);
+            Object.entries(lead.enriched_data).forEach(([k, v]) => {
+                rows.push([k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), typeof v === 'object' ? JSON.stringify(v) : String(v)]);
+            });
+        }
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [{ wch: 25 }, { wch: 60 }];
+        XLSX.utils.book_append_sheet(wb, ws, (lead.company || 'Lead').slice(0, 31));
+        XLSX.writeFile(wb, `RevOps_Lead_${(lead.company || 'Unknown').replace(/\s+/g, '_')}.xlsx`);
+    };
+
+    // Master Excel — all leads in rows
+    const generateAllLeadsExcel = () => {
+        const wb = XLSX.utils.book_new();
+
+        // Overview sheet
+        const stats = [
+            ['Rev-Ops — Master Leads Report'], [`Generated: ${new Date().toLocaleString('en-IN')}`], [''],
+            ['Total Leads', leads.length],
+        ];
+        if (analytics) {
+            stats.push([''], ['INDUSTRY BREAKDOWN']);
+            analytics.industryData.forEach(d => stats.push([d.name, d.value]));
+            stats.push([''], ['BUDGET BREAKDOWN']);
+            analytics.budgetData.forEach(d => stats.push([d.name, d.value]));
+            stats.push([''], ['SERVICE DEMAND']);
+            analytics.serviceData.forEach(d => stats.push([d.name, d.value]));
+        }
+        const wsO = XLSX.utils.aoa_to_sheet(stats);
+        wsO['!cols'] = [{ wch: 30 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, wsO, 'Overview');
+
+        // All Leads sheet
+        const enrichedKeysSet = new Set();
+        leads.forEach(l => { if (l.enriched_data && typeof l.enriched_data === 'object') Object.keys(l.enriched_data).forEach(k => enrichedKeysSet.add(k)); });
+        const eKeys = [...enrichedKeysSet];
+        const baseH = ['S.No', 'Company', 'Name', 'Email', 'Phone', 'Client Type', 'Service', 'Budget', 'Industry', 'Company Size', 'Company Website', 'Work Email', 'Decision Maker', 'Lead Score', 'Status', 'AI Reasoning', 'Message', 'Submitted'];
+        const eH = eKeys.map(k => k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+        const allH = [...baseH, ...eH];
+        const rows = leads.map((l, i) => {
+            const base = [i + 1, l.company || '—', l.name || '—', l.email || '—', l.phone || '—', l.client_type || '—',
+                getServiceLabel(l.service_required), getBudgetLabel(l.estimated_budget), l.industry || '—', l.company_size || '—',
+                l.company_website || '—', l.work_email || '—', l.decision_maker || '—', l.lead_score ?? '—',
+                (l.status || '—').toUpperCase(), l.ai_reasoning || '—', l.message || '—', fmtDate(l.created_at)];
+            const eRow = eKeys.map(k => l.enriched_data?.[k] != null ? (typeof l.enriched_data[k] === 'object' ? JSON.stringify(l.enriched_data[k]) : String(l.enriched_data[k])) : '—');
+            return [...base, ...eRow];
+        });
+        const wsA = XLSX.utils.aoa_to_sheet([allH, ...rows]);
+        wsA['!cols'] = allH.map(h => ({ wch: Math.max((h?.length || 0) + 4, 16) }));
+        XLSX.utils.book_append_sheet(wb, wsA, 'All Leads');
+
+        XLSX.writeFile(wb, `RevOps_AllLeads_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
+
+    // Master Analytics PDF — with visual charts + grids
+    const generateMasterPDF = () => {
+        if (!analytics) return;
+        const doc = new jsPDF();
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const margin = 14;
+        const contentW = pageW - margin * 2;
+
+        const COLORS = [
+            [59, 130, 246], [251, 191, 36], [239, 68, 68], [168, 85, 247],
+            [16, 185, 129], [249, 115, 22], [6, 182, 212], [236, 72, 153],
+        ];
+
+        /* ── Helper: Draw Donut Chart ──────────────────── */
+        const drawDonut = (cx, cy, outerR, innerR, data, title) => {
+            const total = data.reduce((s, d) => s + d.value, 0);
+            if (total === 0) return cy + outerR + 10;
+            let startAngle = -Math.PI / 2;
+
+            // Title
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 50);
+            doc.text(title, cx, cy - outerR - 6, { align: 'center' });
+
+            data.forEach((d, i) => {
+                const sliceAngle = (d.value / total) * Math.PI * 2;
+                const endAngle = startAngle + sliceAngle;
+                const [r, g, b] = COLORS[i % COLORS.length];
+                doc.setFillColor(r, g, b);
+
+                // Draw arc as many small triangles
+                const steps = Math.max(Math.ceil(sliceAngle / 0.05), 3);
+                for (let s = 0; s < steps; s++) {
+                    const a1 = startAngle + (sliceAngle * s / steps);
+                    const a2 = startAngle + (sliceAngle * (s + 1) / steps);
+                    const points = [
+                        [cx + Math.cos(a1) * outerR, cy + Math.sin(a1) * outerR],
+                        [cx + Math.cos(a2) * outerR, cy + Math.sin(a2) * outerR],
+                        [cx + Math.cos(a2) * innerR, cy + Math.sin(a2) * innerR],
+                        [cx + Math.cos(a1) * innerR, cy + Math.sin(a1) * innerR],
+                    ];
+                    doc.triangle(points[0][0], points[0][1], points[1][0], points[1][1], points[2][0], points[2][1], 'F');
+                    doc.triangle(points[0][0], points[0][1], points[2][0], points[2][1], points[3][0], points[3][1], 'F');
+                }
+                startAngle = endAngle;
+            });
+
+            // Center hole (white)
+            doc.setFillColor(255, 255, 255);
+            const holeSteps = 36;
+            for (let s = 0; s < holeSteps; s++) {
+                const a1 = (Math.PI * 2 * s) / holeSteps;
+                const a2 = (Math.PI * 2 * (s + 1)) / holeSteps;
+                doc.triangle(cx, cy, cx + Math.cos(a1) * innerR, cy + Math.sin(a1) * innerR, cx + Math.cos(a2) * innerR, cy + Math.sin(a2) * innerR, 'F');
+            }
+
+            // Center text
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 50);
+            doc.text(String(total), cx, cy + 2, { align: 'center' });
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(120);
+            doc.text('Total', cx, cy + 7, { align: 'center' });
+
+            // Legend
+            let ly = cy + outerR + 8;
+            data.forEach((d, i) => {
+                const [r, g, b] = COLORS[i % COLORS.length];
+                doc.setFillColor(r, g, b);
+                doc.roundedRect(cx - 35, ly - 3, 6, 6, 1, 1, 'F');
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(60);
+                const pct = total > 0 ? `${(d.value / total * 100).toFixed(0)}%` : '0%';
+                doc.text(`${d.name} (${d.value}) ${pct}`, cx - 26, ly + 1);
+                ly += 8;
+            });
+
+            return ly + 4;
         };
 
-        const { data, error } = await supabase.from('teams').insert([toInsert]).select();
-        if (!error && data) {
-            setTeams(prev => [...prev, { ...data[0], project: null, phase: 'none' }]);
-            setIsAddingTeam(false);
-            setNewTeamDraft({ name: '', lead_name: '', total_members: 1, available_members: 1, skills: '', status: 'available', username: '', password: '' });
+        /* ── Helper: Draw Horizontal Bar Chart ─────────── */
+        const drawHBar = (x, y, w, data, title, barColor) => {
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 50);
+            doc.text(title, x, y);
+            y += 8;
+
+            const maxVal = Math.max(...data.map(d => d.value), 1);
+            const barH = 10;
+            const gap = 4;
+            const labelW = 45;
+
+            data.forEach((d, i) => {
+                const [r, g, b] = barColor || COLORS[i % COLORS.length];
+                // Label
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(60);
+                doc.text(d.name, x, y + barH / 2 + 1);
+
+                // Bar background
+                doc.setFillColor(240, 240, 245);
+                doc.roundedRect(x + labelW, y, w - labelW, barH, 2, 2, 'F');
+
+                // Bar fill
+                const barW = Math.max((d.value / maxVal) * (w - labelW), 4);
+                doc.setFillColor(r, g, b);
+                doc.roundedRect(x + labelW, y, barW, barH, 2, 2, 'F');
+
+                // Value
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(r, g, b);
+                doc.text(`${d.value}`, x + labelW + barW + 3, y + barH / 2 + 1);
+
+                y += barH + gap;
+            });
+            return y + 4;
+        };
+
+        /* ── Helper: Stat Card Grid ────────────────────── */
+        const drawStatGrid = (x, y, cards) => {
+            const cardW = (contentW - 12) / 4;
+            const cardH = 28;
+            cards.forEach((card, i) => {
+                const cx = x + i * (cardW + 4);
+                // Card bg
+                doc.setFillColor(245, 247, 250);
+                doc.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
+                // Accent line
+                const [r, g, b] = card.color;
+                doc.setFillColor(r, g, b);
+                doc.roundedRect(cx, y, 3, cardH, 1.5, 1.5, 'F');
+                // Value
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(r, g, b);
+                doc.text(String(card.value), cx + cardW / 2 + 2, y + 12, { align: 'center' });
+                // Label
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(100);
+                doc.text(card.label, cx + cardW / 2 + 2, y + 20, { align: 'center' });
+            });
+            return y + cardH + 10;
+        };
+
+        /* ══════════════════════════════════════════════════
+           PAGE 1: Cover + Executive Summary + Stat Cards
+           ══════════════════════════════════════════════════ */
+
+        // Header bar
+        doc.setFillColor(20, 24, 36);
+        doc.rect(0, 0, pageW, 48, 'F');
+        doc.setFillColor(59, 130, 246);
+        doc.rect(0, 48, pageW, 3, 'F');
+        doc.setTextColor(255);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Rev-Ops', margin, 22);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Master Analytics Report', margin, 34);
+        doc.setFontSize(9);
+        doc.setTextColor(180);
+        doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pageW - margin, 34, { align: 'right' });
+        doc.text(`${leads.length} Leads Analyzed`, pageW - margin, 22, { align: 'right' });
+
+        let y = 62;
+
+        // Stat cards
+        const dmYes = leads.filter(l => l.decision_maker === 'Yes').length;
+        const avgScore = leads.filter(l => l.lead_score != null).length > 0
+            ? (leads.reduce((s, l) => s + (l.lead_score || 0), 0) / leads.filter(l => l.lead_score != null).length).toFixed(0) : '—';
+        const enterprise = leads.filter(l => l.client_type === 'Enterprise').length;
+        const highBudget = leads.filter(l => l.estimated_budget === 'above_2l' || l.estimated_budget === '50k_2l').length;
+
+        y = drawStatGrid(margin, y, [
+            { label: 'TOTAL LEADS', value: leads.length, color: [59, 130, 246] },
+            { label: 'DECISION MAKERS', value: dmYes, color: [16, 185, 129] },
+            { label: 'ENTERPRISE', value: enterprise, color: [251, 191, 36] },
+            { label: 'HIGH BUDGET', value: highBudget, color: [168, 85, 247] },
+        ]);
+
+        // Second row of stat cards
+        const statusCaptured = leads.filter(l => (l.status || '').toLowerCase() === 'captured').length;
+        const statusInvited = leads.filter(l => (l.status || '').toLowerCase() === 'slack_invited').length;
+        y = drawStatGrid(margin, y, [
+            { label: 'AVG SCORE', value: avgScore, color: [239, 68, 68] },
+            { label: 'CAPTURED', value: statusCaptured, color: [249, 115, 22] },
+            { label: 'SLACK INVITED', value: statusInvited, color: [6, 182, 212] },
+            { label: 'DM RATE', value: `${leads.length > 0 ? Math.round(dmYes / leads.length * 100) : 0}%`, color: [236, 72, 153] },
+        ]);
+
+        // ── Two donut charts side by side ──
+        y += 4;
+        const donutY = y + 28;
+        const leftCx = margin + contentW * 0.25;
+        const rightCx = margin + contentW * 0.75;
+        const bottomLeft = drawDonut(leftCx, donutY, 22, 12, analytics.industryData, 'Industry Distribution');
+        const bottomRight = drawDonut(rightCx, donutY, 22, 12, analytics.budgetData, 'Budget Distribution');
+        y = Math.max(bottomLeft, bottomRight);
+
+        /* ══════════════════════════════════════════════════
+           PAGE 2: Service Demand + Client Type + Company Size
+           ══════════════════════════════════════════════════ */
+        doc.addPage();
+
+        // Page header
+        doc.setFillColor(20, 24, 36);
+        doc.rect(0, 0, pageW, 14, 'F');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255);
+        doc.text('Rev-Ops  •  Analytics Deep Dive', margin, 10);
+
+        y = 24;
+
+        // Service demand bar chart
+        y = drawHBar(margin, y, contentW, analytics.serviceData, 'Service Demand Analysis', [59, 130, 246]);
+        y += 4;
+
+        // Two donuts side by side: Client Type + Decision Authority
+        const donut2Y = y + 28;
+        const bl2 = drawDonut(leftCx, donut2Y, 22, 12, analytics.clientTypeData, 'Client Type');
+        const br2 = drawDonut(rightCx, donut2Y, 22, 12, analytics.dmData, 'Decision Authority');
+        y = Math.max(bl2, br2) + 4;
+
+        // Company Size bar chart
+        if (y > 220) { doc.addPage(); y = 20; }
+        y = drawHBar(margin, y, contentW, analytics.sizeData, 'Company Size Distribution', [16, 185, 129]);
+
+        /* ══════════════════════════════════════════════════
+           PAGE 3: Detailed Data Tables
+           ══════════════════════════════════════════════════ */
+        doc.addPage();
+        doc.setFillColor(20, 24, 36);
+        doc.rect(0, 0, pageW, 14, 'F');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255);
+        doc.text('Rev-Ops  •  Detailed Breakdown Tables', margin, 10);
+
+        y = 24;
+
+        // Industry table with visual bar
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(59, 130, 246);
+        doc.text('📊 Industry Distribution', margin, y);
+        y += 4;
+        autoTable(doc, {
+            startY: y, theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            columnStyles: { 2: { fontStyle: 'bold' } },
+            head: [['Industry', 'Count', '% of Total', 'Visual']],
+            body: analytics.industryData.map(d => {
+                const pct = (d.value / leads.length * 100).toFixed(1);
+                return [d.name, d.value, `${pct}%`, '█'.repeat(Math.max(Math.round(pct / 5), 1))];
+            }),
+        });
+        y = doc.lastAutoTable.finalY + 10;
+
+        // Budget table
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(251, 191, 36);
+        doc.text('💰 Budget Distribution', margin, y);
+        y += 4;
+        autoTable(doc, {
+            startY: y, theme: 'grid',
+            headStyles: { fillColor: [251, 191, 36], textColor: [30, 30, 30], fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            head: [['Budget Range', 'Count', '% of Total', 'Visual']],
+            body: analytics.budgetData.map(d => {
+                const pct = (d.value / leads.length * 100).toFixed(1);
+                return [d.name, d.value, `${pct}%`, '█'.repeat(Math.max(Math.round(pct / 5), 1))];
+            }),
+        });
+        y = doc.lastAutoTable.finalY + 10;
+
+        // Service table
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(16, 185, 129);
+        doc.text('🔧 Service Demand', margin, y);
+        y += 4;
+        autoTable(doc, {
+            startY: y, theme: 'grid',
+            headStyles: { fillColor: [16, 185, 129], fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            head: [['Service', 'Count', '% of Total', 'Visual']],
+            body: analytics.serviceData.map(d => {
+                const pct = (d.value / leads.length * 100).toFixed(1);
+                return [d.name, d.value, `${pct}%`, '█'.repeat(Math.max(Math.round(pct / 5), 1))];
+            }),
+        });
+        y = doc.lastAutoTable.finalY + 10;
+
+        // Client Type + Decision Maker + Company Size tables
+        if (y > 200) { doc.addPage(); y = 20; }
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(168, 85, 247);
+        doc.text('👤 Client Type & Decision Maker', margin, y);
+        y += 4;
+        autoTable(doc, {
+            startY: y, theme: 'grid',
+            headStyles: { fillColor: [168, 85, 247], fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            head: [['Client Type', 'Count', '%', 'Decision Maker', 'Count', '%']],
+            body: (() => {
+                const maxLen = Math.max(analytics.clientTypeData.length, analytics.dmData.length);
+                const rows = [];
+                for (let i = 0; i < maxLen; i++) {
+                    const ct = analytics.clientTypeData[i];
+                    const dm = analytics.dmData[i];
+                    rows.push([
+                        ct?.name || '', ct?.value || '', ct ? `${(ct.value / leads.length * 100).toFixed(0)}%` : '',
+                        dm?.name || '', dm?.value || '', dm ? `${(dm.value / leads.length * 100).toFixed(0)}%` : '',
+                    ]);
+                }
+                return rows;
+            })(),
+        });
+        y = doc.lastAutoTable.finalY + 10;
+
+        // Status breakdown
+        if (y > 240) { doc.addPage(); y = 20; }
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(6, 182, 212);
+        doc.text('📋 Lead Status Overview', margin, y);
+        y += 4;
+        autoTable(doc, {
+            startY: y, theme: 'grid',
+            headStyles: { fillColor: [6, 182, 212], fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            head: [['Status', 'Count', '% of Total']],
+            body: analytics.statusData.map(d => [d.name, d.value, `${(d.value / leads.length * 100).toFixed(1)}%`]),
+        });
+
+        /* ══════════════════════════════════════════════════
+           PAGE 4: All Leads Comparison Grid
+           ══════════════════════════════════════════════════ */
+        doc.addPage();
+        doc.setFillColor(20, 24, 36);
+        doc.rect(0, 0, pageW, 14, 'F');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255);
+        doc.text('Rev-Ops  •  All Leads Comparison Grid', margin, 10);
+
+        doc.setFontSize(13);
+        doc.setTextColor(40);
+        doc.text('Lead-by-Lead Comparison', margin, 26);
+
+        autoTable(doc, {
+            startY: 32, theme: 'striped',
+            headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 7, fontStyle: 'bold', halign: 'center' },
+            bodyStyles: { fontSize: 7, halign: 'center' },
+            columnStyles: {
+                0: { cellWidth: 8 },
+                1: { cellWidth: 28, halign: 'left' },
+                2: { cellWidth: 22, halign: 'left' },
+                3: { cellWidth: 22 },
+                4: { cellWidth: 20 },
+                5: { cellWidth: 20 },
+                6: { cellWidth: 18 },
+                7: { cellWidth: 18 },
+                8: { cellWidth: 13 },
+                9: { cellWidth: 16 },
+            },
+            head: [['#', 'Company', 'Contact', 'Service', 'Budget', 'Industry', 'Size', 'Decision', 'Score', 'Status']],
+            body: leads.map((l, i) => [
+                i + 1,
+                l.company || '—',
+                l.name || '—',
+                getServiceLabel(l.service_required),
+                getBudgetLabel(l.estimated_budget),
+                l.industry || '—',
+                l.company_size || '—',
+                l.decision_maker || '—',
+                l.lead_score ?? '—',
+                (l.status || '—').toUpperCase(),
+            ]),
+            didParseCell: (data) => {
+                // Color code scores
+                if (data.column.index === 8 && data.section === 'body') {
+                    const score = parseInt(data.cell.raw);
+                    if (!isNaN(score)) {
+                        if (score >= 70) { data.cell.styles.textColor = [16, 185, 129]; data.cell.styles.fontStyle = 'bold'; }
+                        else if (score >= 40) { data.cell.styles.textColor = [251, 191, 36]; data.cell.styles.fontStyle = 'bold'; }
+                        else { data.cell.styles.textColor = [239, 68, 68]; data.cell.styles.fontStyle = 'bold'; }
+                    }
+                }
+                // Color code status
+                if (data.column.index === 9 && data.section === 'body') {
+                    const s = String(data.cell.raw).toLowerCase();
+                    if (s.includes('slack')) { data.cell.styles.textColor = [16, 185, 129]; }
+                    else if (s.includes('captured')) { data.cell.styles.textColor = [251, 191, 36]; }
+                }
+            },
+        });
+
+        /* ── Footer on all pages ─────────────────────── */
+        const pc = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pc; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text('Rev-Ops  •  Confidential Analytics Report', margin, pageH - 8);
+            doc.text(`Page ${i} of ${pc}`, pageW - margin, pageH - 8, { align: 'right' });
+            // Top-right page badge
+            if (i > 1) {
+                doc.setFontSize(7);
+                doc.setTextColor(180);
+                doc.text(`${leads.length} leads`, pageW - margin, 10, { align: 'right' });
+            }
         }
+
+        doc.save(`RevOps_Master_Analytics_${new Date().toISOString().slice(0, 10)}.pdf`);
     };
 
-    // 1. Filter by tier
-    const filtered = filterTier === 'all'
-        ? MOCK_COMPANIES
-        : MOCK_COMPANIES.filter(c => c.tier === filterTier);
-
-    // 2. Sort the filtered list
-    const displayed = [...filtered].sort((a, b) => {
-        if (sortBy === 'tier-asc') return (a.tier || 5) - (b.tier || 5);
-        if (sortBy === 'tier-desc') return (b.tier || 0) - (a.tier || 0);
-        return 0;
-    });
-
+    /* ── Sidebar nav items ─────────────────────────── */
     const navItems = [
-        { key: 'analytics', label: 'Analytics Hub', icon: <Activity size={20} /> },
-        { key: 'ongoing', label: 'Ongoing Projects', icon: <Clock size={20} /> },
-        { key: 'teams', label: 'Available Teams', icon: <Briefcase size={20} /> },
-        { key: 'clients', label: 'Active Clients', icon: <Users size={20} /> },
-        { key: 'company', label: 'Company Directory', icon: <Building size={20} /> },
-        { key: 'projects', label: 'Projects Done', icon: <CheckCircle2 size={20} /> },
+        { key: 'analytics', label: 'Lead Analytics', icon: <Activity size={20} /> },
+        { key: 'reports', label: 'Reports Hub', icon: <FileText size={20} /> },
     ];
 
-    return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', overflow: 'hidden' }}>
+    /* ── Chart Card component ──────────────────────── */
+    const ChartCard = ({ title, subtitle, children }) => (
+        <div className="glass" style={{ padding: '24px', height: '100%' }}>
+            <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff' }}>{title}</div>
+                {subtitle && <div style={{ fontSize: '12px', color: '#71717a', marginTop: '2px' }}>{subtitle}</div>}
+            </div>
+            {children}
+        </div>
+    );
 
-            {/* ── Sidebar ── */}
-            <div className="glass" style={{
-                width: '250px', flexShrink: 0, margin: '1rem', padding: '1.5rem',
-                display: 'flex', flexDirection: 'column', height: 'calc(100vh - 2rem)',
-                borderRight: '1px solid rgba(255,255,255,0.05)',
+    /* ── Render ─────────────────────────────────────── */
+    return (
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
+            {/* Sidebar */}
+            <aside style={{
+                width: '240px', flexShrink: 0, padding: '28px 16px',
+                display: 'flex', flexDirection: 'column',
+                borderRight: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.02)',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2.5rem' }}>
-                    <div style={{
-                        width: '40px', height: '40px', borderRadius: '12px',
-                        background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 700, fontSize: '18px', color: '#fff',
-                    }}>R</div>
-                    <span style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>Rev-Ops Console</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', paddingLeft: '8px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: '16px' }}>R</div>
+                    <span style={{ fontWeight: 700, fontSize: '16px', color: '#fff', letterSpacing: '-0.01em' }}>Rev-Ops Console</span>
                 </div>
 
-                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
                     {navItems.map(item => (
-                        <button key={item.key} onClick={() => setActiveTab(item.key)} style={{
-                            width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                            padding: '11px 14px', borderRadius: '12px', border: 'none',
-                            cursor: 'pointer', fontFamily: 'inherit', fontSize: '15px',
-                            fontWeight: activeTab === item.key ? 600 : 400,
-                            background: activeTab === item.key
-                                ? 'linear-gradient(135deg,#3b82f6,#2563eb)'
-                                : 'transparent',
-                            color: activeTab === item.key ? '#fff' : '#a1a1aa',
-                            boxShadow: activeTab === item.key ? '0 4px 14px rgba(59,130,246,0.35)' : 'none',
-                            transition: 'all 0.25s',
-                        }}>
-                            {item.icon}
-                            <span>{item.label}</span>
+                        <button key={item.key} onClick={() => setActiveTab(item.key)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                                background: activeTab === item.key ? 'linear-gradient(135deg,#3b82f6,#2563eb)' : 'transparent',
+                                color: activeTab === item.key ? '#fff' : '#a1a1aa',
+                                fontWeight: activeTab === item.key ? 700 : 500, fontSize: '14px', fontFamily: 'inherit', transition: 'all .2s', textAlign: 'left',
+                            }}>
+                            {item.icon} {item.label}
                         </button>
                     ))}
                 </nav>
 
-                <button onClick={() => {
-                    localStorage.removeItem('adminToken');
-                    navigate('/');
-                }} style={{
-                    marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '11px 14px', borderRadius: '12px', border: 'none',
-                    cursor: 'pointer', fontFamily: 'inherit', fontSize: '14px',
-                    color: '#f87171', background: 'transparent', transition: 'background .2s',
-                }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,113,0.1)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                    <LogOut size={18} />
-                    <span>Logout</span>
+                <button onClick={() => { localStorage.removeItem('adminToken'); navigate('/'); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderRadius: '12px', border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 600, fontSize: '14px', fontFamily: 'inherit' }}>
+                    <LogOut size={18} /> Logout
                 </button>
-            </div>
+            </aside>
 
-            {/* ── Main Content ── */}
-            <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-
-                {/* Header row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                    <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: 0, color: '#fff' }}>
-                        {navItems.find(n => n.key === activeTab)?.label}
-                    </h2>
-                    {activeTab === 'company' && (
-                        <CustomSelect value={sortBy} onChange={setSortBy} />
-                    )}
-                </div>
-
-                {/* ── Tier Filter Pills (company tab only) ── */}
-                {activeTab === 'company' && (
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
-                        {FILTER_PILLS.map(pill => {
-                            const active = filterTier === pill.value;
-                            return (
-                                <button key={pill.value} onClick={() => setFilterTier(pill.value)} style={{
-                                    padding: '7px 18px', borderRadius: '99px', border: 'none',
-                                    cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
-                                    transition: 'all 0.2s',
-                                    background: active ? pill.color : 'rgba(255,255,255,0.06)',
-                                    color: active ? '#fff' : '#a1a1aa',
-                                    boxShadow: active ? `0 4px 14px ${pill.color}55` : 'none',
-                                    outline: active ? `2px solid ${pill.color}80` : '2px solid transparent',
-                                    outlineOffset: '2px',
-                                }}>
-                                    {pill.label}
-                                </button>
-                            );
-                        })}
-
-                        {/* Result count badge */}
-                        <span style={{
-                            marginLeft: 'auto', alignSelf: 'center',
-                            fontSize: '13px', color: '#71717a',
-                        }}>
-                            {displayed.length} {displayed.length === 1 ? 'company' : 'companies'}
-                        </span>
-                    </div>
-                )}
+            {/* Main */}
+            <div style={{ flex: 1, padding: '32px 40px', overflowY: 'auto' }}>
+                <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#fff', marginBottom: '28px' }}>
+                    {navItems.find(n => n.key === activeTab)?.label}
+                </h1>
 
                 <AnimatePresence mode="wait">
 
-                    {/* Analytics Hub */}
+                    {/* ── Lead Analytics ──────────────── */}
                     {activeTab === 'analytics' && (
-                        <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-
-                                {/* Meeting Success Chart */}
-                                <div className="glass" style={{ padding: '24px', height: '400px', display: 'flex', flexDirection: 'column' }}>
-                                    <h3 style={{ margin: 0, color: '#fff', fontSize: '18px', fontWeight: 700 }}>Meeting Triage Success</h3>
-                                    <p style={{ color: '#71717a', fontSize: '13px', margin: '4px 0 20px' }}>AI-driven lead qualification results</p>
-                                    <div style={{ flex: 1 }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={analyticsData.meetings}
-                                                    innerRadius={80}
-                                                    outerRadius={110}
-                                                    paddingAngle={5}
-                                                    dataKey="value"
-                                                >
-                                                    <Cell fill="#10b981" />
-                                                    <Cell fill="#f43f5e" />
-                                                    <Cell fill="#3b82f6" />
-                                                </Pie>
-                                                <Tooltip
-                                                    contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                                                    itemStyle={{ color: '#fff' }}
-                                                />
-                                                <Legend verticalAlign="bottom" height={36} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
+                        <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                            {loadingLeads ? (
+                                <div style={{ padding: '40px', textAlign: 'center', color: '#71717a' }}>Loading analytics...</div>
+                            ) : !analytics ? (
+                                <div className="glass" style={{ padding: '60px', textAlign: 'center' }}>
+                                    <Activity size={40} color="#52525b" style={{ marginBottom: '12px' }} />
+                                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#71717a' }}>No Data Yet</div>
+                                    <div style={{ fontSize: '13px', color: '#52525b', marginTop: '6px' }}>Submit leads via the inquiry form to see analytics.</div>
                                 </div>
-
-                                {/* Projects Completion History */}
-                                <div className="glass" style={{ padding: '24px', height: '400px', display: 'flex', flexDirection: 'column' }}>
-                                    <h3 style={{ margin: 0, color: '#fff', fontSize: '18px', fontWeight: 700 }}>Project Completion Growth</h3>
-                                    <p style={{ color: '#71717a', fontSize: '13px', margin: '4px 0 20px' }}>Successful deliverables over time</p>
-                                    <div style={{ flex: 1 }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={analyticsData.projectsHistory}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                                                <XAxis dataKey="month" stroke="#71717a" fontSize={12} />
-                                                <YAxis yAxisId="left" stroke="#38bdf8" fontSize={12} orientation="left" />
-                                                <YAxis yAxisId="right" stroke="#3b82f6" fontSize={12} orientation="right" />
-                                                <Tooltip
-                                                    contentStyle={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-                                                />
-                                                <Legend />
-                                                <Line
-                                                    yAxisId="left"
-                                                    type="monotone"
-                                                    dataKey="completed"
-                                                    name="Projects"
-                                                    stroke="#38bdf8"
-                                                    strokeWidth={3}
-                                                    dot={{ fill: '#38bdf8', r: 5 }}
-                                                    activeDot={{ r: 8 }}
-                                                />
-                                                <Line
-                                                    yAxisId="right"
-                                                    type="monotone"
-                                                    dataKey="revenue"
-                                                    name="Revenue ($)"
-                                                    stroke="#3b82f6"
-                                                    strokeWidth={3}
-                                                    dot={{ fill: '#3b82f6', r: 5 }}
-                                                    activeDot={{ r: 8 }}
-                                                />
-                                            </LineChart>
-                                        </ResponsiveContainer>
+                            ) : (
+                                <>
+                                    {/* Stat Cards */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+                                        {[
+                                            { label: 'Total Leads', value: leads.length, color: '#3b82f6' },
+                                            { label: 'Decision Makers', value: leads.filter(l => l.decision_maker === 'Yes').length, color: '#10b981' },
+                                            { label: 'Enterprise', value: leads.filter(l => l.client_type === 'Enterprise').length, color: '#fbbf24' },
+                                            { label: 'Avg Score', value: leads.filter(l => l.lead_score != null).length > 0 ? (leads.reduce((s, l) => s + (l.lead_score || 0), 0) / leads.filter(l => l.lead_score != null).length).toFixed(0) : '—', color: '#a855f7' },
+                                        ].map(s => (
+                                            <div key={s.label} className="glass" style={{ padding: '20px', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '32px', fontWeight: 800, color: s.color }}>{s.value}</div>
+                                                <div style={{ fontSize: '12px', color: '#71717a', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
 
-                            </div>
+                                    {/* Row 1: Industry + Budget */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                        <ChartCard title="Industry Distribution" subtitle="Where leads come from">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <PieChart>
+                                                    <Pie data={analytics.industryData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                                        {analytics.industryData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                                                    </Pie>
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+
+                                        <ChartCard title="Budget Distribution" subtitle="Client spending ranges">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <PieChart>
+                                                    <Pie data={analytics.budgetData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                                        {analytics.budgetData.map((_, i) => <Cell key={i} fill={CHART_COLORS[(i + 2) % CHART_COLORS.length]} />)}
+                                                    </Pie>
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+                                    </div>
+
+                                    {/* Row 2: Service Demand + Client Type */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                        <ChartCard title="Service Demand" subtitle="Most requested services">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <BarChart data={analytics.serviceData} layout="vertical" margin={{ left: 20 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                                    <XAxis type="number" tick={{ fill: '#71717a', fontSize: 11 }} />
+                                                    <YAxis dataKey="name" type="category" tick={{ fill: '#a1a1aa', fontSize: 11 }} width={80} />
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 6, 6, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+
+                                        <ChartCard title="Client Type" subtitle="Who is reaching out">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <PieChart>
+                                                    <Pie data={analytics.clientTypeData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                                        {analytics.clientTypeData.map((_, i) => <Cell key={i} fill={CHART_COLORS[(i + 4) % CHART_COLORS.length]} />)}
+                                                    </Pie>
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+                                    </div>
+
+                                    {/* Row 3: Company Size + Decision Authority */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <ChartCard title="Company Size" subtitle="Team size distribution">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <BarChart data={analytics.sizeData}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                                    <XAxis dataKey="name" tick={{ fill: '#a1a1aa', fontSize: 10 }} />
+                                                    <YAxis tick={{ fill: '#71717a', fontSize: 11 }} />
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                    <Bar dataKey="value" fill="#10b981" radius={[6, 6, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+
+                                        <ChartCard title="Decision Authority" subtitle="Buyer qualification">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <PieChart>
+                                                    <Pie data={analytics.dmData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                                        {analytics.dmData.map((_, i) => <Cell key={i} fill={CHART_COLORS[(i + 6) % CHART_COLORS.length]} />)}
+                                                    </Pie>
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+                                    </div>
+                                </>
+                            )}
                         </motion.div>
                     )}
 
-                    {/* Active Clients */}
-                    {activeTab === 'clients' && (
-                        <motion.div key="clients"
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                            style={{ display: 'grid', gap: '14px' }}
-                        >
-                            {[1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="glass" style={{
-                                    padding: '18px 22px', display: 'flex', alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                        <div style={{
-                                            width: '46px', height: '46px', borderRadius: '50%',
-                                            background: 'rgba(59,130,246,0.1)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
-                                            <Users size={20} color="#3b82f6" />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>Active Client #{i}</div>
-                                            <div style={{ fontSize: '13px', color: '#a1a1aa' }}>Last active: {i * 2} hours ago</div>
-                                        </div>
+                    {/* ── Reports Hub ─────────────────── */}
+                    {activeTab === 'reports' && (
+                        <motion.div key="reports" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                            {/* Master Report Cards */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '28px' }}>
+                                {/* Master Excel */}
+                                <div className="glass" style={{ padding: '24px', borderLeft: '4px solid #10b981' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                        <FileSpreadsheet size={20} color="#10b981" />
+                                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#fff' }}>Master Excel Report</h3>
                                     </div>
-                                    <ChevronRight size={18} color="#a1a1aa" />
+                                    <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#71717a' }}>All {leads.length} leads — Overview + Comparison sheet</p>
+                                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={generateAllLeadsExcel} disabled={leads.length === 0}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: 'none', background: leads.length > 0 ? 'linear-gradient(135deg,#059669,#34d399)' : 'rgba(255,255,255,0.05)', color: leads.length > 0 ? '#fff' : '#52525b', cursor: leads.length > 0 ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700, fontFamily: 'inherit' }}>
+                                        <Download size={16} /> Download Excel
+                                    </motion.button>
                                 </div>
-                            ))}
-                        </motion.div>
-                    )}
 
-                    {/* Company Directory */}
-                    {activeTab === 'company' && (
-                        <motion.div key={`company-${filterTier}-${sortBy}`}
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}
-                        >
-                            {displayed.length === 0 ? (
-                                <div style={{
-                                    gridColumn: '1/-1', textAlign: 'center',
-                                    padding: '60px 20px', color: '#52525b',
-                                    fontSize: '15px',
-                                }}>
-                                    No companies found for this tier.
+                                {/* Master PDF */}
+                                <div className="glass" style={{ padding: '24px', borderLeft: '4px solid #3b82f6' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                        <FileText size={20} color="#3b82f6" />
+                                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#fff' }}>Master Analytics PDF</h3>
+                                    </div>
+                                    <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#71717a' }}>Charts, graphs & comparison tables</p>
+                                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={generateMasterPDF} disabled={leads.length === 0}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: 'none', background: leads.length > 0 ? 'linear-gradient(135deg,#3b82f6,#2563eb)' : 'rgba(255,255,255,0.05)', color: leads.length > 0 ? '#fff' : '#52525b', cursor: leads.length > 0 ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700, fontFamily: 'inherit' }}>
+                                        <Download size={16} /> Download PDF
+                                    </motion.button>
                                 </div>
-                            ) : displayed.map(company => {
-                                const cfg = TIER_CONFIG[company.tier];
-                                return (
-                                    <motion.div layout key={company.id} className="glass" style={{ overflow: 'hidden' }}>
-                                        <div style={{ height: '4px', background: cfg.color }} />
-                                        <div style={{ padding: '18px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                                                <span style={{ fontWeight: 700, fontSize: '16px', color: '#fff' }}>{company.name}</span>
-                                                <span style={{
-                                                    padding: '3px 8px', borderRadius: '6px', fontSize: '10px',
-                                                    fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
-                                                    background: `${cfg.color}22`, color: cfg.color,
-                                                    border: `1px solid ${cfg.color}44`, whiteSpace: 'nowrap',
-                                                }}>{cfg.label}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a1a1aa', fontSize: '13px', marginBottom: '14px' }}>
-                                                <Mail size={13} />
-                                                {company.email}
-                                            </div>
-                                            <button
-                                                style={{
-                                                    width: '100%', padding: '8px', border: 'none',
-                                                    background: `${cfg.color}15`,
-                                                    color: cfg.color, borderRadius: '8px',
-                                                    fontSize: '13px', fontWeight: 600,
-                                                    cursor: 'pointer', fontFamily: 'inherit', transition: 'background .18s',
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = `${cfg.color}30`}
-                                                onMouseLeave={e => e.currentTarget.style.background = `${cfg.color}15`}
-                                            >View Details</button>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </motion.div>
-                    )}
-
-                    {/* Ongoing Projects */}
-                    {activeTab === 'ongoing' && (
-                        <motion.div key="ongoing"
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(400px,1fr))', gap: '24px' }}
-                        >
-                            {MOCK_ONGOING_PROJECTS.map(proj => {
-                                const projPct = PHASE_PCT_ADMIN[proj.phase] ?? 0;
-                                const projColor = projPct === 100 ? '#34d399' : projPct >= 60 ? '#3b82f6' : '#64748b';
-                                const formattedPhase = proj.phase.charAt(0).toUpperCase() + proj.phase.slice(1).replace('-', ' ');
-
-                                return (
-                                    <div key={proj.id} className="glass" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#fff' }}>{proj.title}</h4>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#a1a1aa', marginTop: '4px' }}>
-                                                    <Building size={12} /> {proj.client}
-                                                </div>
-                                            </div>
-                                            <span style={{
-                                                padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                                                background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
-                                                border: '1px solid rgba(59,130,246,0.2)',
-                                            }}>
-                                                Team: {proj.team}
-                                            </span>
-                                        </div>
-
-                                        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-                                            <div>
-                                                <span style={{ color: '#71717a', fontSize: '12px', display: 'block', marginBottom: '2px' }}>Value</span>
-                                                <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>{proj.value}</span>
-                                            </div>
-                                            <div>
-                                                <span style={{ color: '#71717a', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                                                    <Clock size={12} /> Deadline
-                                                </span>
-                                                <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>{proj.deadline}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Progress */}
-                                        <div style={{ marginTop: 'auto', padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#e4e4e7' }}>Phase: <span style={{ color: projColor }}>{formattedPhase}</span></span>
-                                                <span style={{ fontSize: '12px', fontWeight: 700, color: projColor }}>{projPct}%</span>
-                                            </div>
-                                            <div style={{ height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                                                <motion.div
-                                                    initial={{ width: 0 }} animate={{ width: `${projPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                    style={{
-                                                        height: '100%', borderRadius: '99px',
-                                                        background: projPct === 100 ? 'linear-gradient(90deg,#059669,#34d399)'
-                                                            : projPct >= 60 ? 'linear-gradient(90deg,#3b82f6,#2563eb)'
-                                                                : 'linear-gradient(90deg,#64748b,#94a3b8)',
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </motion.div>
-                    )}
-
-                    {/* Projects Done */}
-                    {activeTab === 'projects' && (
-                        <motion.div key="projects"
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                            style={{ display: 'grid', gap: '18px' }}
-                        >
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="glass" style={{ padding: '28px', display: 'flex', borderLeft: '4px solid #3b82f6' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                                            <CheckCircle2 size={20} color="#3b82f6" />
-                                            <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff' }}>Project Alpha-0{i}</h4>
-                                        </div>
-                                        <p style={{ margin: 0, color: '#a1a1aa', maxWidth: '480px' }}>
-                                            Successfully implemented enterprise architecture patterns for Fortune 500 partner.
-                                        </p>
-                                    </div>
-                                    <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '20px' }}>
-                                        <div style={{ color: '#3b82f6', fontWeight: 700, fontSize: '20px' }}>$45,000</div>
-                                        <div style={{ color: '#71717a', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>Completed Dec 2023</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </motion.div>
-                    )}
-
-                    {/* Available Teams */}
-                    {activeTab === 'teams' && (
-                        <motion.div key="teams"
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-                                <button onClick={() => setIsAddingTeam(!isAddingTeam)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '12px', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
-                                    <Plus size={16} /> Add New Team
-                                </button>
                             </div>
 
-                            {/* Add Team Form */}
-                            <AnimatePresence>
-                                {isAddingTeam && (
-                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden', marginBottom: '24px' }}>
-                                        <div className="glass" style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', borderLeft: '4px solid #3b82f6' }}>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Team Name</label><input value={newTeamDraft.name} onChange={e => setNewTeamDraft(d => ({ ...d, name: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Lead Name</label><input value={newTeamDraft.lead_name} onChange={e => setNewTeamDraft(d => ({ ...d, lead_name: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Total Members</label><input type="number" value={newTeamDraft.total_members} onChange={e => setNewTeamDraft(d => ({ ...d, total_members: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Available Members</label><input type="number" value={newTeamDraft.available_members} onChange={e => setNewTeamDraft(d => ({ ...d, available_members: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Skills (comma separated)</label><input value={newTeamDraft.skills} onChange={e => setNewTeamDraft(d => ({ ...d, skills: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} placeholder="Web, Node, ERP" /></div>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Status</label><select value={newTeamDraft.status} onChange={e => setNewTeamDraft(d => ({ ...d, status: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px', background: 'var(--bg-deep)' }}><option value="available">Available</option><option value="partial">Partial</option><option value="busy">Busy</option></select></div>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Login Username</label><input value={newTeamDraft.username} onChange={e => setNewTeamDraft(d => ({ ...d, username: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
-                                            <div><label style={{ fontSize: '12px', color: '#a1a1aa', fontWeight: 600 }}>Login Password</label><input value={newTeamDraft.password} onChange={e => setNewTeamDraft(d => ({ ...d, password: e.target.value }))} className="input-field" style={{ width: '100%', padding: '10px', marginTop: '6px' }} /></div>
-                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', gridColumn: '1 / -1' }}>
-                                                <button onClick={handleAddTeam} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '8px', background: '#34d399', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}>Save Team</button>
-                                                <button onClick={() => setIsAddingTeam(false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer' }}>Cancel</button>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                            {/* Section Title */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                                <div style={{ width: '4px', height: '20px', borderRadius: '99px', background: '#3b82f6' }} />
+                                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#e4e4e7' }}>Individual Lead Reports</h3>
+                            </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: '20px' }}>
-                                {loadingTeams ? <div style={{ color: '#a1a1aa', padding: '20px' }}>Loading teams...</div> :
-                                    teams.map(team => {
-                                        const statusColor = team.status === 'available' ? '#34d399' : team.status === 'partial' ? '#fbbf24' : '#f87171';
-                                        const statusLabel = team.status === 'available' ? 'Available' : team.status === 'partial' ? 'Partial' : 'Busy';
-                                        const availPct = team.total_members > 0 ? Math.round((team.available_members / team.total_members) * 100) : 0;
-                                        const projPct = PHASE_PCT_ADMIN[team.phase] ?? 0;
-                                        const projColor = projPct === 100 ? '#34d399' : projPct >= 60 ? '#3b82f6' : '#64748b';
-
+                            {/* Leads List */}
+                            {loadingLeads ? (
+                                <div style={{ padding: '40px', textAlign: 'center', color: '#71717a' }}>Loading...</div>
+                            ) : leads.length === 0 ? (
+                                <div className="glass" style={{ padding: '48px', textAlign: 'center' }}>
+                                    <FileText size={40} color="#52525b" style={{ marginBottom: '12px' }} />
+                                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#71717a' }}>No Leads Found</div>
+                                    <div style={{ fontSize: '13px', color: '#52525b' }}>Submit inquiries via the form to see reports here.</div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gap: '10px' }}>
+                                    {leads.map(lead => {
+                                        const isSlackSent = lead.status === 'slack_invited';
                                         return (
-                                            <div key={team.id} className="glass" style={{ padding: '22px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: statusColor }} />
-                                                <div style={{ paddingLeft: '10px', flex: 1 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                                        <div>
-                                                            <div style={{ fontWeight: 700, fontSize: '17px', color: '#fff' }}>{team.name}</div>
-                                                            <div style={{ fontSize: '12px', color: '#a1a1aa', marginTop: '3px' }}>Lead: {team.lead_name}</div>
-                                                        </div>
-                                                        <span style={{ padding: '3px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, background: `${statusColor}20`, color: statusColor, border: `1px solid ${statusColor}40` }}>{statusLabel}</span>
+                                            <div key={lead.id} className="glass" style={{
+                                                padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap',
+                                                borderLeft: `4px solid ${isSlackSent ? '#10b981' : '#3b82f6'}`,
+                                            }}>
+                                                {/* Lead info */}
+                                                <div style={{ flex: 1, minWidth: '180px' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: '15px', color: '#fff' }}>{lead.company || 'Unknown'}</div>
+                                                    <div style={{ fontSize: '12px', color: '#71717a', marginTop: '2px' }}>
+                                                        {lead.name} • {lead.email} • {getServiceLabel(lead.service_required)}
                                                     </div>
+                                                </div>
 
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-                                                        <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
-                                                            <svg width="48" height="48" viewBox="0 0 48 48">
-                                                                <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
-                                                                <circle cx="24" cy="24" r="20" fill="none" stroke={statusColor} strokeWidth="4"
-                                                                    strokeDasharray={`${2 * Math.PI * 20}`} strokeDashoffset={`${2 * Math.PI * 20 * (1 - availPct / 100)}`} strokeLinecap="round" transform="rotate(-90 24 24)" />
-                                                            </svg>
-                                                            <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '10px', fontWeight: 700, color: statusColor }}>{availPct}%</span>
+                                                {/* Score + Status */}
+                                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+                                                    {lead.lead_score != null && (
+                                                        <div style={{ textAlign: 'center' }}>
+                                                            <div style={{ fontSize: '18px', fontWeight: 800, color: lead.lead_score >= 70 ? '#34d399' : lead.lead_score >= 40 ? '#fbbf24' : '#f87171' }}>{lead.lead_score}</div>
+                                                            <div style={{ fontSize: '9px', color: '#52525b', textTransform: 'uppercase' }}>Score</div>
                                                         </div>
-                                                        <div style={{ fontSize: '13px', color: '#a1a1aa' }}>
-                                                            <span style={{ color: '#fff', fontWeight: 700, fontSize: '22px' }}>{team.available_members}</span>
-                                                            <span style={{ color: '#71717a' }}>/{team.total_members} available</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div style={{ marginBottom: '14px', padding: '12px', borderRadius: '10px', background: team.project ? 'rgba(59,130,246,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${team.project ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
-                                                        <div style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Ongoing Project</div>
-                                                        {team.project ? (
-                                                            <>
-                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#e4e4e7', marginBottom: '8px' }}>{team.project}</div>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{ fontSize: '11px', color: '#71717a' }}>{team.phase.charAt(0).toUpperCase() + team.phase.slice(1)}</span><span style={{ fontSize: '11px', fontWeight: 700, color: projColor }}>{projPct}%</span></div>
-                                                                <div style={{ height: '5px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                                                                    <div style={{ height: '100%', borderRadius: '99px', width: `${projPct}%`, background: projPct === 100 ? 'linear-gradient(90deg,#059669,#34d399)' : projPct >= 60 ? 'linear-gradient(90deg,#3b82f6,#2563eb)' : 'linear-gradient(90deg,#64748b,#94a3b8)' }} />
-                                                                </div>
-                                                            </>
-                                                        ) : <div style={{ fontSize: '12px', color: '#52525b', fontStyle: 'italic' }}>No active project</div>}
-                                                    </div>
-
-                                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                                                        {team.skills.map(s => (
-                                                            <span key={s} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)' }}>{s}</span>
-                                                        ))}
-                                                    </div>
-
-                                                    {/* Auth Editing Section */}
-                                                    {editingTeamId === team.id ? (
-                                                        <div style={{ marginTop: 'auto', background: 'rgba(59,130,246,0.08)', border: '1px dashed rgba(59,130,246,0.3)', padding: '12px', borderRadius: '10px' }}>
-                                                            <div style={{ fontSize: '11px', color: '#3b82f6', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 700 }}>Update Team Login</div>
-                                                            <input value={editTeamDraft.username} onChange={e => setEditTeamDraft(t => ({ ...t, username: e.target.value }))} className="input-field" placeholder="Username" style={{ width: '100%', padding: '8px', marginBottom: '8px', fontSize: '12px' }} />
-                                                            <input value={editTeamDraft.password} onChange={e => setEditTeamDraft(t => ({ ...t, password: e.target.value }))} className="input-field" placeholder="Password" style={{ width: '100%', padding: '8px', marginBottom: '10px', fontSize: '12px' }} />
-                                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                                <button onClick={() => handleSaveTeamAuth(team.id)} style={{ flex: 1, padding: '6px', background: '#34d399', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>Save</button>
-                                                                <button onClick={() => setEditingTeamId(null)} style={{ flex: 1, padding: '6px', background: 'transparent', color: '#a1a1aa', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => { setEditingTeamId(team.id); setEditTeamDraft({ username: team.username || '', password: team.password || '' }); }}
-                                                            style={{ marginTop: 'auto', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#a1a1aa', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
-                                                            onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-                                                            onMouseLeave={e => { e.currentTarget.style.color = '#a1a1aa'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-                                                        >
-                                                            <Pencil size={12} /> Edit Login Details
-                                                        </button>
                                                     )}
+                                                    <span style={{
+                                                        padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 600,
+                                                        background: isSlackSent ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)',
+                                                        color: isSlackSent ? '#34d399' : '#fbbf24',
+                                                    }}>
+                                                        {(lead.status || 'captured').toUpperCase()}
+                                                    </span>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                                    <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} onClick={() => generateIndividualPDF(lead)}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600 }}>
+                                                        <FileText size={13} /> PDF
+                                                    </motion.button>
+                                                    <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} onClick={() => generateIndividualExcel(lead)}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.3)', background: 'rgba(52,211,153,0.1)', color: '#34d399', cursor: 'pointer', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600 }}>
+                                                        <FileSpreadsheet size={13} /> Excel
+                                                    </motion.button>
+                                                    <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} onClick={() => handleSlackInvite(lead)}
+                                                        disabled={isSlackSent || slackSending === lead.id}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', border: 'none', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600,
+                                                            background: isSlackSent ? 'rgba(52,211,153,0.08)' : 'linear-gradient(135deg,#f97316,#ea580c)',
+                                                            color: isSlackSent ? '#52525b' : '#fff',
+                                                            cursor: isSlackSent ? 'default' : 'pointer',
+                                                        }}>
+                                                        <SendIcon size={13} /> {slackSending === lead.id ? '...' : isSlackSent ? 'Sent ✓' : 'Slack'}
+                                                    </motion.button>
                                                 </div>
                                             </div>
                                         );
                                     })}
-                            </div>
+                                </div>
+                            )}
                         </motion.div>
                     )}
 
