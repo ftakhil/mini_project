@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    LogOut, Activity, FileText, Download, FileSpreadsheet, Send as SendIcon
+    LogOut, Activity, FileText, Download, FileSpreadsheet, Send as SendIcon,
+    CheckCircle2, XCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -129,6 +130,17 @@ const Dashboard = () => {
             alert('Failed to trigger Slack invite. Check n8n workflow.');
         }
         setSlackSending(null);
+    };
+
+    /* ── Status Update (Client / Lost) ────────────── */
+    const handleStatusUpdate = async (lead, newStatus) => {
+        try {
+            await supabase.from('leads').update({ status: newStatus }).eq('id', lead.id);
+            setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: newStatus } : l));
+        } catch (err) {
+            console.error('Status update error:', err);
+            alert('Failed to update lead status.');
+        }
     };
 
     /* ── Report Generation Functions ───────────────── */
@@ -333,7 +345,7 @@ const Dashboard = () => {
         ];
 
         /* ── Helper: Draw Donut Chart ──────────────────── */
-        const drawDonut = (cx, cy, outerR, innerR, data, title) => {
+        const drawDonut = (cx, cy, outerR, innerR, data, title, customColors) => {
             const total = data.reduce((s, d) => s + d.value, 0);
             if (total === 0) return cy + outerR + 10;
             let startAngle = -Math.PI / 2;
@@ -347,7 +359,7 @@ const Dashboard = () => {
             data.forEach((d, i) => {
                 const sliceAngle = (d.value / total) * Math.PI * 2;
                 const endAngle = startAngle + sliceAngle;
-                const [r, g, b] = COLORS[i % COLORS.length];
+                const [r, g, b] = (customColors && customColors[i]) || COLORS[i % COLORS.length];
                 doc.setFillColor(r, g, b);
 
                 // Draw arc as many small triangles
@@ -389,7 +401,7 @@ const Dashboard = () => {
             // Legend
             let ly = cy + outerR + 8;
             data.forEach((d, i) => {
-                const [r, g, b] = COLORS[i % COLORS.length];
+                const [r, g, b] = (customColors && customColors[i]) || COLORS[i % COLORS.length];
                 doc.setFillColor(r, g, b);
                 doc.roundedRect(cx - 35, ly - 3, 6, 6, 1, 1, 'F');
                 doc.setFontSize(7);
@@ -445,30 +457,37 @@ const Dashboard = () => {
         };
 
         /* ── Helper: Stat Card Grid ────────────────────── */
+        /* ── Helper: Stat Card Grid ────────────────────── */
         const drawStatGrid = (x, y, cards) => {
             const cardW = (contentW - 12) / 4;
-            const cardH = 28;
+            const cardH = 26;
+            const gap = 4;
             cards.forEach((card, i) => {
-                const cx = x + i * (cardW + 4);
+                const row = Math.floor(i / 4);
+                const col = i % 4;
+                const cx = x + col * (cardW + gap);
+                const cy = y + row * (cardH + gap);
+                
                 // Card bg
                 doc.setFillColor(245, 247, 250);
-                doc.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
+                doc.roundedRect(cx, cy, cardW, cardH, 3, 3, 'F');
                 // Accent line
                 const [r, g, b] = card.color;
                 doc.setFillColor(r, g, b);
-                doc.roundedRect(cx, y, 3, cardH, 1.5, 1.5, 'F');
+                doc.roundedRect(cx, cy, 3, cardH, 1.5, 1.5, 'F');
                 // Value
-                doc.setFontSize(16);
+                doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(r, g, b);
-                doc.text(String(card.value), cx + cardW / 2 + 2, y + 12, { align: 'center' });
+                doc.text(String(card.value), cx + cardW / 2 + 2, cy + 11, { align: 'center' });
                 // Label
-                doc.setFontSize(7);
+                doc.setFontSize(6);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(100);
-                doc.text(card.label, cx + cardW / 2 + 2, y + 20, { align: 'center' });
+                doc.text(card.label, cx + cardW / 2 + 2, cy + 19, { align: 'center' });
             });
-            return y + cardH + 10;
+            const rows = Math.ceil(cards.length / 4);
+            return y + rows * (cardH + gap) + 6;
         };
 
         /* ══════════════════════════════════════════════════
@@ -498,27 +517,25 @@ const Dashboard = () => {
         const dmYes = leads.filter(l => l.decision_maker === 'Yes').length;
         const avgScore = leads.filter(l => l.lead_score != null).length > 0
             ? (leads.reduce((s, l) => s + (l.lead_score || 0), 0) / leads.filter(l => l.lead_score != null).length).toFixed(0) : '—';
-        const enterprise = leads.filter(l => l.client_type === 'Enterprise').length;
+        const converted = leads.filter(l => l.status === 'client').length;
+        const lostCount = leads.filter(l => l.status === 'lost').length;
+        const decided = converted + lostCount;
+        const convRate = decided > 0 ? `${Math.round(converted / decided * 100)}%` : '0%';
         const highBudget = leads.filter(l => l.estimated_budget === 'above_2l' || l.estimated_budget === '50k_2l').length;
+        const enterprise = leads.filter(l => l.client_type === 'Enterprise').length;
 
         y = drawStatGrid(margin, y, [
             { label: 'TOTAL LEADS', value: leads.length, color: [59, 130, 246] },
-            { label: 'DECISION MAKERS', value: dmYes, color: [16, 185, 129] },
-            { label: 'ENTERPRISE', value: enterprise, color: [251, 191, 36] },
-            { label: 'HIGH BUDGET', value: highBudget, color: [168, 85, 247] },
+            { label: 'CLIENTS (CONV)', value: converted, color: [16, 185, 129] },
+            { label: 'LOST LEADS', value: lostCount, color: [239, 68, 68] },
+            { label: 'CONV. RATE %', value: convRate, color: [251, 191, 36] },
+            { label: 'DECISION MAKERS', value: dmYes, color: [168, 85, 247] },
+            { label: 'ENTERPRISE', value: enterprise, color: [6, 182, 212] },
+            { label: 'HIGH BUDGET', value: highBudget, color: [249, 115, 22] },
+            { label: 'AVG SCORE', value: avgScore, color: [100, 100, 100] },
         ]);
 
-        // Second row of stat cards
-        const statusCaptured = leads.filter(l => (l.status || '').toLowerCase() === 'captured').length;
-        const statusInvited = leads.filter(l => (l.status || '').toLowerCase() === 'slack_invited').length;
-        y = drawStatGrid(margin, y, [
-            { label: 'AVG SCORE', value: avgScore, color: [239, 68, 68] },
-            { label: 'CAPTURED', value: statusCaptured, color: [249, 115, 22] },
-            { label: 'SLACK INVITED', value: statusInvited, color: [6, 182, 212] },
-            { label: 'DM RATE', value: `${leads.length > 0 ? Math.round(dmYes / leads.length * 100) : 0}%`, color: [236, 72, 153] },
-        ]);
-
-        // ── Two donut charts side by side ──
+        // Industry and Budget Charts ──
         y += 4;
         const donutY = y + 28;
         const leftCx = margin + contentW * 0.25;
@@ -552,9 +569,21 @@ const Dashboard = () => {
         const br2 = drawDonut(rightCx, donut2Y, 22, 12, analytics.dmData, 'Decision Authority');
         y = Math.max(bl2, br2) + 4;
 
-        // Company Size bar chart
-        if (y > 220) { doc.addPage(); y = 20; }
         y = drawHBar(margin, y, contentW, analytics.sizeData, 'Company Size Distribution', [16, 185, 129]);
+        y += 4;
+
+        // Conversion Pipeline Donut
+        const conversionPipeData = [
+            { name: 'Converted', value: leads.filter(l => l.status === 'client').length },
+            { name: 'Lost', value: leads.filter(l => l.status === 'lost').length },
+            { name: 'In Progress', value: leads.filter(l => l.status !== 'client' && l.status !== 'lost').length },
+        ].filter(d => d.value > 0);
+        
+        const pipeY = y + 28;
+        if (pipeY > 270) { doc.addPage(); y = 24; }
+        
+        y = drawDonut(margin + contentW*0.5, y + 28, 26, 14, conversionPipeData, 'Conversion Pipeline', [COLORS[4], COLORS[2], COLORS[1]]);
+        y += 10;
 
         /* ══════════════════════════════════════════════════
            PAGE 3: Detailed Data Tables
@@ -569,22 +598,19 @@ const Dashboard = () => {
 
         y = 24;
 
-        // Industry table with visual bar
+        // Industry table
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(59, 130, 246);
-        doc.text('📊 Industry Distribution', margin, y);
+        doc.text('[+] Industry Distribution', margin, y);
         y += 4;
         autoTable(doc, {
             startY: y, theme: 'grid',
             headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 9 },
             bodyStyles: { fontSize: 9 },
             columnStyles: { 2: { fontStyle: 'bold' } },
-            head: [['Industry', 'Count', '% of Total', 'Visual']],
-            body: analytics.industryData.map(d => {
-                const pct = (d.value / leads.length * 100).toFixed(1);
-                return [d.name, d.value, `${pct}%`, '█'.repeat(Math.max(Math.round(pct / 5), 1))];
-            }),
+            head: [['Industry', 'Count', '% of Total']],
+            body: analytics.industryData.map(d => [d.name, d.value, `${(d.value / leads.length * 100).toFixed(1)}%`]),
         });
         y = doc.lastAutoTable.finalY + 10;
 
@@ -592,17 +618,14 @@ const Dashboard = () => {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(251, 191, 36);
-        doc.text('💰 Budget Distribution', margin, y);
+        doc.text('[+] Budget Distribution', margin, y);
         y += 4;
         autoTable(doc, {
             startY: y, theme: 'grid',
             headStyles: { fillColor: [251, 191, 36], textColor: [30, 30, 30], fontSize: 9 },
             bodyStyles: { fontSize: 9 },
-            head: [['Budget Range', 'Count', '% of Total', 'Visual']],
-            body: analytics.budgetData.map(d => {
-                const pct = (d.value / leads.length * 100).toFixed(1);
-                return [d.name, d.value, `${pct}%`, '█'.repeat(Math.max(Math.round(pct / 5), 1))];
-            }),
+            head: [['Budget Range', 'Count', '% of Total']],
+            body: analytics.budgetData.map(d => [d.name, d.value, `${(d.value / leads.length * 100).toFixed(1)}%`]),
         });
         y = doc.lastAutoTable.finalY + 10;
 
@@ -610,17 +633,14 @@ const Dashboard = () => {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(16, 185, 129);
-        doc.text('🔧 Service Demand', margin, y);
+        doc.text('[+] Service Demand', margin, y);
         y += 4;
         autoTable(doc, {
             startY: y, theme: 'grid',
             headStyles: { fillColor: [16, 185, 129], fontSize: 9 },
             bodyStyles: { fontSize: 9 },
-            head: [['Service', 'Count', '% of Total', 'Visual']],
-            body: analytics.serviceData.map(d => {
-                const pct = (d.value / leads.length * 100).toFixed(1);
-                return [d.name, d.value, `${pct}%`, '█'.repeat(Math.max(Math.round(pct / 5), 1))];
-            }),
+            head: [['Service', 'Count', '% of Total']],
+            body: analytics.serviceData.map(d => [d.name, d.value, `${(d.value / leads.length * 100).toFixed(1)}%`]),
         });
         y = doc.lastAutoTable.finalY + 10;
 
@@ -630,7 +650,7 @@ const Dashboard = () => {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(168, 85, 247);
-        doc.text('👤 Client Type & Decision Maker', margin, y);
+        doc.text('[+] Client Type & Decision Maker', margin, y);
         y += 4;
         autoTable(doc, {
             startY: y, theme: 'grid',
@@ -658,7 +678,7 @@ const Dashboard = () => {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(6, 182, 212);
-        doc.text('📋 Lead Status Overview', margin, y);
+        doc.text('[+] Lead Status Overview', margin, y);
         y += 4;
         autoTable(doc, {
             startY: y, theme: 'grid',
@@ -725,8 +745,10 @@ const Dashboard = () => {
                 // Color code status
                 if (data.column.index === 9 && data.section === 'body') {
                     const s = String(data.cell.raw).toLowerCase();
-                    if (s.includes('slack')) { data.cell.styles.textColor = [16, 185, 129]; }
-                    else if (s.includes('captured')) { data.cell.styles.textColor = [251, 191, 36]; }
+                    if (s.includes('client')) { data.cell.styles.textColor = [16, 185, 129]; data.cell.styles.fontStyle = 'bold'; }
+                    else if (s.includes('lost')) { data.cell.styles.textColor = [239, 68, 68]; data.cell.styles.fontStyle = 'bold'; }
+                    else if (s.includes('slack')) { data.cell.styles.textColor = [249, 115, 22]; }
+                    else if (s.includes('captured')) { data.cell.styles.textColor = [59, 130, 246]; }
                 }
             },
         });
@@ -824,12 +846,14 @@ const Dashboard = () => {
                             ) : (
                                 <>
                                     {/* Stat Cards */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', marginBottom: '28px' }}>
                                         {[
                                             { label: 'Total Leads', value: leads.length, color: '#3b82f6' },
-                                            { label: 'Decision Makers', value: leads.filter(l => l.decision_maker === 'Yes').length, color: '#10b981' },
-                                            { label: 'Enterprise', value: leads.filter(l => l.client_type === 'Enterprise').length, color: '#fbbf24' },
-                                            { label: 'Avg Score', value: leads.filter(l => l.lead_score != null).length > 0 ? (leads.reduce((s, l) => s + (l.lead_score || 0), 0) / leads.filter(l => l.lead_score != null).length).toFixed(0) : '—', color: '#a855f7' },
+                                            { label: 'Clients', value: leads.filter(l => l.status === 'client').length, color: '#10b981' },
+                                            { label: 'Lost', value: leads.filter(l => l.status === 'lost').length, color: '#ef4444' },
+                                            { label: 'Conversion', value: (() => { const decided = leads.filter(l => l.status === 'client' || l.status === 'lost').length; return decided > 0 ? `${Math.round(leads.filter(l => l.status === 'client').length / decided * 100)}%` : '—'; })(), color: '#fbbf24' },
+                                            { label: 'Decision Makers', value: leads.filter(l => l.decision_maker === 'Yes').length, color: '#a855f7' },
+                                            { label: 'Avg Score', value: leads.filter(l => l.lead_score != null).length > 0 ? (leads.reduce((s, l) => s + (l.lead_score || 0), 0) / leads.filter(l => l.lead_score != null).length).toFixed(0) : '—', color: '#06b6d4' },
                                         ].map(s => (
                                             <div key={s.label} className="glass" style={{ padding: '20px', textAlign: 'center' }}>
                                                 <div style={{ fontSize: '32px', fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -890,7 +914,7 @@ const Dashboard = () => {
                                     </div>
 
                                     {/* Row 3: Company Size + Decision Authority */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                                         <ChartCard title="Company Size" subtitle="Team size distribution">
                                             <ResponsiveContainer width="100%" height={250}>
                                                 <BarChart data={analytics.sizeData}>
@@ -911,6 +935,43 @@ const Dashboard = () => {
                                                     </Pie>
                                                     <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
                                                 </PieChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+                                    </div>
+
+                                    {/* Row 4: Conversion Funnel */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <ChartCard title="Conversion Funnel" subtitle="Lead to client pipeline">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <PieChart>
+                                                    <Pie data={[
+                                                        { name: 'Clients', value: leads.filter(l => l.status === 'client').length },
+                                                        { name: 'Lost', value: leads.filter(l => l.status === 'lost').length },
+                                                        { name: 'In Progress', value: leads.filter(l => l.status !== 'client' && l.status !== 'lost').length },
+                                                    ].filter(d => d.value > 0)} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                                        <Cell fill="#10b981" />
+                                                        <Cell fill="#ef4444" />
+                                                        <Cell fill="#fbbf24" />
+                                                    </Pie>
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </ChartCard>
+
+                                        <ChartCard title="Lead Status" subtitle="Current pipeline status">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <BarChart data={analytics.statusData}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                                    <XAxis dataKey="name" tick={{ fill: '#a1a1aa', fontSize: 10 }} />
+                                                    <YAxis tick={{ fill: '#71717a', fontSize: 11 }} />
+                                                    <Tooltip contentStyle={{ background: '#1e1e28', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                                                        {analytics.statusData.map((entry, i) => {
+                                                            const colorMap = { client: '#10b981', lost: '#ef4444', slack_invited: '#f97316', captured: '#fbbf24' };
+                                                            return <Cell key={i} fill={colorMap[entry.name?.toLowerCase()] || CHART_COLORS[i % CHART_COLORS.length]} />;
+                                                        })}
+                                                    </Bar>
+                                                </BarChart>
                                             </ResponsiveContainer>
                                         </ChartCard>
                                     </div>
@@ -969,11 +1030,18 @@ const Dashboard = () => {
                             ) : (
                                 <div style={{ display: 'grid', gap: '10px' }}>
                                     {leads.map(lead => {
-                                        const isSlackSent = lead.status === 'slack_invited';
+                                        const st = (lead.status || 'captured').toLowerCase();
+                                        const isSlackSent = st === 'slack_invited' || st === 'client' || st === 'lost';
+                                        const isClient = st === 'client';
+                                        const isLost = st === 'lost';
+                                        const isDecided = isClient || isLost;
+                                        const borderColor = isClient ? '#10b981' : isLost ? '#ef4444' : isSlackSent ? '#f97316' : '#3b82f6';
+                                        const statusBg = isClient ? 'rgba(16,185,129,0.12)' : isLost ? 'rgba(239,68,68,0.12)' : isSlackSent ? 'rgba(249,115,22,0.12)' : 'rgba(251,191,36,0.12)';
+                                        const statusColor = isClient ? '#34d399' : isLost ? '#f87171' : isSlackSent ? '#fb923c' : '#fbbf24';
                                         return (
                                             <div key={lead.id} className="glass" style={{
                                                 padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap',
-                                                borderLeft: `4px solid ${isSlackSent ? '#10b981' : '#3b82f6'}`,
+                                                borderLeft: `4px solid ${borderColor}`,
                                             }}>
                                                 {/* Lead info */}
                                                 <div style={{ flex: 1, minWidth: '180px' }}>
@@ -993,15 +1061,14 @@ const Dashboard = () => {
                                                     )}
                                                     <span style={{
                                                         padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 600,
-                                                        background: isSlackSent ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)',
-                                                        color: isSlackSent ? '#34d399' : '#fbbf24',
+                                                        background: statusBg, color: statusColor,
                                                     }}>
-                                                        {(lead.status || 'captured').toUpperCase()}
+                                                        {st.toUpperCase()}
                                                     </span>
                                                 </div>
 
                                                 {/* Action Buttons */}
-                                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap' }}>
                                                     <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} onClick={() => generateIndividualPDF(lead)}
                                                         style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600 }}>
                                                         <FileText size={13} /> PDF
@@ -1014,12 +1081,36 @@ const Dashboard = () => {
                                                         disabled={isSlackSent || slackSending === lead.id}
                                                         style={{
                                                             display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', border: 'none', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600,
-                                                            background: isSlackSent ? 'rgba(52,211,153,0.08)' : 'linear-gradient(135deg,#f97316,#ea580c)',
+                                                            background: isSlackSent ? 'rgba(249,115,22,0.08)' : 'linear-gradient(135deg,#f97316,#ea580c)',
                                                             color: isSlackSent ? '#52525b' : '#fff',
                                                             cursor: isSlackSent ? 'default' : 'pointer',
                                                         }}>
-                                                        <SendIcon size={13} /> {slackSending === lead.id ? '...' : isSlackSent ? 'Sent ✓' : 'Slack'}
+                                                        <SendIcon size={13} /> {slackSending === lead.id ? '...' : isSlackSent ? 'Sent' : 'Slack'}
                                                     </motion.button>
+
+                                                    {/* Conversion Buttons — shown after Slack invite */}
+                                                    {isSlackSent && !isDecided && (
+                                                        <>
+                                                            <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} onClick={() => handleStatusUpdate(lead, 'client')}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600 }}>
+                                                                <CheckCircle2 size={13} /> Client
+                                                            </motion.button>
+                                                            <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} onClick={() => handleStatusUpdate(lead, 'lost')}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600 }}>
+                                                                <XCircle size={13} /> Lost
+                                                            </motion.button>
+                                                        </>
+                                                    )}
+                                                    {isClient && (
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 12px', borderRadius: '8px', background: 'rgba(16,185,129,0.12)', color: '#34d399', fontSize: '11px', fontWeight: 700 }}>
+                                                            <CheckCircle2 size={13} /> Converted
+                                                        </span>
+                                                    )}
+                                                    {isLost && (
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.12)', color: '#f87171', fontSize: '11px', fontWeight: 700 }}>
+                                                            <XCircle size={13} /> Not Converted
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         );

@@ -85,6 +85,33 @@ const RadioGroup = ({ options, value, onChange, name }) => (
     </div>
 );
 
+const sendLeadToWebhook = async (payload) => {
+    const webhookUrl = import.meta.env.VITE_WEBHOOK_URL;
+    if (!webhookUrl) throw new Error('VITE_WEBHOOK_URL is not configured');
+
+    const headers = { 'Content-Type': 'application/json' };
+
+    const user = import.meta.env.VITE_WEBHOOK_AUTH_USER;
+    const pass = import.meta.env.VITE_WEBHOOK_AUTH_PASS;
+    if (user && pass) {
+        headers['Authorization'] = `Basic ${btoa(`${user}:${pass}`)}`;
+    }
+
+    const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        let detail = '';
+        try { detail = await response.text(); } catch (_) {}
+        console.error(`Webhook ${response.status}:`, detail);
+        throw new Error(`Webhook failed with status ${response.status}${detail ? ` — ${detail}` : ''}`);
+    }
+};
+
+
 const FormPage = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -104,12 +131,14 @@ const FormPage = () => {
         message: '',
     });
     const [status, setStatus] = useState('idle');
+    const [errorMessage, setErrorMessage] = useState('');
 
     const set = (key) => (e) => setFormData(prev => ({ ...prev, [key]: e.target.value }));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setStatus('sending');
+        setErrorMessage('');
 
         try {
             const { data: leadData, error: dbError } = await supabase
@@ -139,20 +168,43 @@ const FormPage = () => {
                 return;
             }
 
-            console.log('Lead saved:', leadData);
-            setStatus('success');
+            const savedLead = leadData?.[0];
 
-            // Fire n8n webhook in background
-            const webhookUrl = import.meta.env.VITE_WEBHOOK_URL;
-            if (webhookUrl) {
-                fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...formData, lead_id: leadData?.[0]?.id, submittedAt: new Date().toISOString() }),
-                }).catch(err => console.warn('Webhook (non-critical):', err));
-            }
+            // POST all details to n8n webhook
+            await sendLeadToWebhook({
+                lead_id: savedLead?.id || null,
+                submitted_at: new Date().toISOString(),
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                company: formData.company,
+                website_link: formData.website_link || null,
+                client_type: formData.client_type,
+                service_required: formData.service_required,
+                service_other: formData.service_required === 'other' ? formData.service_other : null,
+                estimated_budget: formData.estimated_budget,
+                industry: formData.industry,
+                company_size: formData.company_size,
+                company_website: formData.company_website,
+                decision_maker: formData.decision_maker,
+                message: formData.message || null,
+                status: 'captured',
+            });
+
+            console.log('Lead saved and webhook sent:', savedLead);
+            setStatus('success');
         } catch (err) {
             console.error('Submit error:', err);
+            const msg = String(err?.message || '');
+            if (msg.toLowerCase().includes('failed to fetch')) {
+                setErrorMessage('Webhook request failed. In local development, restart Vite so proxy config is applied. In production, allow CORS for your frontend origin in n8n.');
+            } else if (msg.includes('status 403')) {
+                setErrorMessage('Webhook returned 403 (forbidden). Check webhook authentication/security settings in n8n and ensure the exact URL is correct.');
+            } else if (msg.includes('status 404')) {
+                setErrorMessage('Webhook returned 404 (not found). If using /webhook-test/, click "Listen for test event" in n8n. For stable use, switch to /webhook/ and activate workflow.');
+            } else {
+                setErrorMessage(msg || 'Submission failed.');
+            }
             setStatus('error');
         }
     };
@@ -292,7 +344,7 @@ const FormPage = () => {
                     {/* Error */}
                     {status === 'error' && (
                         <div style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', padding: '12px', borderRadius: '8px', fontSize: '13px', textAlign: 'center', border: '1px solid rgba(248,113,113,0.3)' }}>
-                            Error submitting form. Please check your details and try again.
+                            Error submitting form. {errorMessage || 'Please check your details and try again.'}
                         </div>
                     )}
 
