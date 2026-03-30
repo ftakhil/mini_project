@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Building2, Mail, User, MessageSquare, Briefcase, Send, CheckCircle2,
-    DollarSign, Phone, Globe, Users, Layers, BriefcaseBusiness
+    DollarSign, Phone, Globe, Users, Layers
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -27,7 +27,7 @@ const BUDGETS = [
 const CLIENT_TYPES = ['Individual', 'Startup', 'Small Business', 'Agency', 'Enterprise'];
 const INDUSTRIES = ['Technology', 'E-commerce', 'Healthcare', 'Finance', 'Education', 'Other'];
 const COMPANY_SIZES = ['1–10 employees', '11–50', '51–200', '200+'];
-const DECISION_OPTIONS = ['Yes', 'Part of the team', 'Just researching'];
+
 
 /* ── Shared Styles ────────────────────────────────── */
 const labelStyle = { fontSize: '12px', fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' };
@@ -119,7 +119,6 @@ const FormPage = () => {
         email: '',
         phone: '',
         company: '',
-        website_link: '',
         client_type: '',
         service_required: '',
         service_other: '',
@@ -127,7 +126,6 @@ const FormPage = () => {
         industry: '',
         company_size: '',
         company_website: '',
-        decision_maker: '',
         message: '',
     });
     const [status, setStatus] = useState('idle');
@@ -148,15 +146,13 @@ const FormPage = () => {
                     email: formData.email,
                     phone: formData.phone,
                     company: formData.company,
-                    website_link: formData.website_link || null,
                     client_type: formData.client_type,
                     service_required: formData.service_required,
                     service_other: formData.service_required === 'other' ? formData.service_other : null,
                     estimated_budget: formData.estimated_budget,
                     industry: formData.industry,
                     company_size: formData.company_size,
-                    company_website: formData.company_website,
-                    decision_maker: formData.decision_maker,
+                    company_website: formData.company_website || null,
                     message: formData.message || null,
                     status: 'captured',
                 }])
@@ -178,17 +174,16 @@ const FormPage = () => {
                 email: formData.email,
                 phone: formData.phone,
                 company: formData.company,
-                website_link: formData.website_link || null,
                 client_type: formData.client_type,
                 service_required: formData.service_required,
                 service_other: formData.service_required === 'other' ? formData.service_other : null,
                 estimated_budget: formData.estimated_budget,
                 industry: formData.industry,
                 company_size: formData.company_size,
-                company_website: formData.company_website,
-                decision_maker: formData.decision_maker,
+                company_website: formData.company_website || null,
                 message: formData.message || null,
                 status: 'captured',
+                metadata: 'webform_lead',
             });
 
             console.log('Lead saved and webhook sent:', savedLead);
@@ -271,10 +266,6 @@ const FormPage = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={labelStyle}>Website / Social Media Link (Optional)</label>
-                        <InputField icon={Globe} placeholder="https://yourcompany.com" value={formData.website_link} onChange={set('website_link')} />
-                    </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <label style={labelStyle}>What best describes you? *</label>
@@ -322,12 +313,6 @@ const FormPage = () => {
                         <InputField icon={Globe} required placeholder="https://linkedin.com/company/..." value={formData.company_website} onChange={set('company_website')} />
                     </div>
 
-                    {/* ── Section 4: Decision Authority ───── */}
-                    {sectionTitle('Decision Authority')}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={labelStyle}>Are you the decision-maker? *</label>
-                        <RadioGroup options={DECISION_OPTIONS} value={formData.decision_maker} onChange={(v) => setFormData(prev => ({ ...prev, decision_maker: v }))} name="decision_maker" />
-                    </div>
 
                     {/* ── Section 5: Message ─────────────── */}
                     {sectionTitle('Additional Information')}
