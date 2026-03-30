@@ -247,6 +247,35 @@ const Dashboard = () => {
 
     /* ── Report Generation Functions ───────────────── */
 
+    const parseEnrichedData = async (data) => {
+        if (!data) return null;
+        let parsed = data;
+        let attempts = 0;
+        
+        while (typeof parsed === 'string' && attempts < 5) {
+            if (parsed.startsWith('http://') || parsed.startsWith('https://')) {
+                try {
+                    const res = await fetch(parsed);
+                    parsed = await res.json();
+                    break;
+                } catch (e) {
+                    console.error('Failed to fetch JSON URL', e);
+                    break;
+                }
+            }
+            
+            try {
+                const nextParse = JSON.parse(parsed);
+                if (nextParse === parsed) break; // Break if parsing yields identical string
+                parsed = nextParse;
+            } catch(e) {
+                break; // If it's a string but fails to parse, break out
+            }
+            attempts++;
+        }
+        return parsed;
+    };
+
     // Individual PDF
     const generateIndividualPDF = async (lead) => {
         const doc = new jsPDF();
@@ -449,17 +478,7 @@ const Dashboard = () => {
         /* ══════════════════════════════════════════════
            ENRICHED DATA — Full Breakdown
            ══════════════════════════════════════════════ */
-        let parsedEnrichedData = lead.enriched_data;
-        if (typeof parsedEnrichedData === 'string') {
-            if (parsedEnrichedData.startsWith('http')) {
-                try {
-                    const res = await fetch(parsedEnrichedData);
-                    parsedEnrichedData = await res.json();
-                } catch (e) { console.error('Failed to fetch JSON URL for PDF', e); }
-            } else {
-                try { parsedEnrichedData = JSON.parse(parsedEnrichedData); } catch (e) { /* ignore */ }
-            }
-        }
+        let parsedEnrichedData = await parseEnrichedData(lead.enriched_data);
 
         if (parsedEnrichedData && typeof parsedEnrichedData === 'object' && Object.keys(parsedEnrichedData).length > 0) {
             doc.addPage();
@@ -484,125 +503,22 @@ const Dashboard = () => {
             // Group by top-level key prefix
             const topLevelKeys = Object.keys(parsedEnrichedData);
             
-            if (topLevelKeys.length <= 8 && allRows.length <= 20) {
-                // Small enriched data — single table
-                autoTable(doc, {
-                    startY: y,
-                    theme: 'striped',
-                    headStyles: { fillColor: [20, 24, 36], textColor: 255, fontStyle: 'bold', fontSize: 10 },
-                    bodyStyles: { fontSize: 9, cellPadding: 4 },
-                    columnStyles: {
-                        0: { fontStyle: 'bold', cellWidth: 65, textColor: [59, 130, 246] },
-                        1: { cellWidth: contentW - 65 }
-                    },
-                    head: [['Property', 'Value']],
-                    body: allRows,
-                    styles: { overflow: 'linebreak', cellWidth: 'wrap' },
-                    didDrawPage: () => { addPageHeader('Enriched Data — Full Breakdown'); },
-                });
-                y = doc.lastAutoTable.finalY + 10;
-            } else {
-                // Large enriched data — break into sections by top-level key
-                for (const topKey of topLevelKeys) {
-                    const val = parsedEnrichedData[topKey];
-                    const sectionTitle = topKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-
-                    y = checkPageBreak(y, 30, 'Enriched Data');
-
-                    // Section header
-                    doc.setFillColor(59, 130, 246);
-                    doc.roundedRect(margin, y - 4, contentW, 14, 2, 2, 'F');
-                    doc.setFontSize(10);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(255);
-                    doc.text(sectionTitle, margin + 6, y + 4);
-                    y += 16;
-
-                    if (val === null || val === undefined || val === '') {
-                        doc.setFontSize(9);
-                        doc.setFont('helvetica', 'normal');
-                        doc.setTextColor(120);
-                        doc.text('No data available', margin + 4, y);
-                        y += 10;
-                    } else if (typeof val === 'object' && !Array.isArray(val)) {
-                        // Object — render as table
-                        const subRows = flattenObject(val);
-                        autoTable(doc, {
-                            startY: y,
-                            theme: 'striped',
-                            headStyles: { fillColor: [40, 44, 56], textColor: 255, fontSize: 9 },
-                            bodyStyles: { fontSize: 9, cellPadding: 3 },
-                            columnStyles: {
-                                0: { fontStyle: 'bold', cellWidth: 60 },
-                                1: { cellWidth: contentW - 60 }
-                            },
-                            head: [['Field', 'Value']],
-                            body: subRows.length > 0 ? subRows : [['—', 'No data']],
-                            styles: { overflow: 'linebreak', cellWidth: 'wrap' },
-                            margin: { left: margin },
-                            didDrawPage: () => { addPageHeader('Enriched Data — Full Breakdown'); },
-                        });
-                        y = doc.lastAutoTable.finalY + 8;
-                    } else if (Array.isArray(val)) {
-                        if (val.length === 0) {
-                            doc.setFontSize(9);
-                            doc.setFont('helvetica', 'normal');
-                            doc.setTextColor(120);
-                            doc.text('(empty list)', margin + 4, y);
-                            y += 10;
-                        } else if (typeof val[0] === 'object' && val[0] !== null) {
-                            // Array of objects — render each as mini-table
-                            val.forEach((item, idx) => {
-                                y = checkPageBreak(y, 20, 'Enriched Data');
-                                doc.setFontSize(9);
-                                doc.setFont('helvetica', 'bold');
-                                doc.setTextColor(80);
-                                doc.text(`${sectionTitle} #${idx + 1}`, margin + 4, y);
-                                y += 4;
-                                const itemRows = flattenObject(item);
-                                autoTable(doc, {
-                                    startY: y,
-                                    theme: 'plain',
-                                    bodyStyles: { fontSize: 8, cellPadding: 2 },
-                                    columnStyles: {
-                                        0: { fontStyle: 'bold', cellWidth: 55, textColor: [80, 80, 100] },
-                                        1: { cellWidth: contentW - 55 }
-                                    },
-                                    body: itemRows.length > 0 ? itemRows : [['—', 'No data']],
-                                    styles: { overflow: 'linebreak', cellWidth: 'wrap' },
-                                    margin: { left: margin },
-                                    didDrawPage: () => { addPageHeader('Enriched Data — Full Breakdown'); },
-                                });
-                                y = doc.lastAutoTable.finalY + 6;
-                            });
-                        } else {
-                            // Simple array — single row
-                            doc.setFontSize(9);
-                            doc.setFont('helvetica', 'normal');
-                            doc.setTextColor(50);
-                            const arrText = doc.splitTextToSize(val.join(', '), contentW - 8);
-                            arrText.forEach(line => {
-                                y = checkPageBreak(y, 5, 'Enriched Data');
-                                doc.text(line, margin + 4, y);
-                                y += 5;
-                            });
-                            y += 6;
-                        }
-                    } else {
-                        // Simple value
-                        doc.setFontSize(10);
-                        doc.setFont('helvetica', 'normal');
-                        doc.setTextColor(50);
-                        const valText = doc.splitTextToSize(String(val), contentW - 8);
-                        valText.forEach(line => {
-                            y = checkPageBreak(y, 5, 'Enriched Data');
-                            doc.text(line, margin + 4, y);
-                            y += 5;
-                        });
-                        y += 6;
-                    }
-                }
-            }
+            // Render all enriched data as a clean, unified, paginated table
+            autoTable(doc, {
+                startY: y,
+                theme: 'striped',
+                headStyles: { fillColor: [20, 24, 36], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                bodyStyles: { fontSize: 9, cellPadding: 4 },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 65, textColor: [59, 130, 246] },
+                    1: { cellWidth: contentW - 65 }
+                },
+                head: [['Property', 'Value']],
+                body: allRows.length > 0 ? allRows : [['—', 'No data']],
+                styles: { overflow: 'linebreak', cellWidth: 'wrap' },
+                didDrawPage: () => { addPageHeader('Enriched Data — Full Breakdown'); },
+            });
+            y = doc.lastAutoTable.finalY + 10;
         }
 
         /* ── Footer on all pages ─────────────────────── */
@@ -632,17 +548,9 @@ const Dashboard = () => {
             ['AI Reasoning', lead.ai_reasoning || '—'], ['Status', (lead.status || '—').toUpperCase()],
             ['Submitted', fmtDate(lead.created_at)], ['Message', lead.message || '—'],
         ];
-        let exParsedEnrichedData = lead.enriched_data;
-        if (typeof exParsedEnrichedData === 'string') {
-            if (exParsedEnrichedData.startsWith('http')) {
-                try {
-                    const res = await fetch(exParsedEnrichedData);
-                    exParsedEnrichedData = await res.json();
-                } catch (e) { console.error('Failed to fetch JSON URL for Excel', e); }
-            } else {
-                try { exParsedEnrichedData = JSON.parse(exParsedEnrichedData); } catch (e) { /* ignore */ }
-            }
-        }
+        
+        let exParsedEnrichedData = await parseEnrichedData(lead.enriched_data);
+        
         if (exParsedEnrichedData && typeof exParsedEnrichedData === 'object') {
             rows.push(['', ''], ['--- ENRICHED DATA ---', '']);
             Object.entries(exParsedEnrichedData).forEach(([k, v]) => {
